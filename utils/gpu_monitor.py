@@ -3,33 +3,15 @@ GPU监控工具 - 实时监控GPU状态和显存使用
 """
 import os
 import time
+import subprocess
 import threading
 from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+from utils.logger import get_logger
 
-# 尝试导入nvidia-ml-py（推荐）或pynvml（已弃用）
-PYNVML_AVAILABLE = False
-pynvml = None
-
-try:
-    import nvidia_ml_py as nvml
-    nvml.nvmlInit()
-    pynvml = nvml
-    PYNVML_AVAILABLE = True
-except ImportError:
-    try:
-        import pynvml
-        pynvml.nvmlInit()
-        PYNVML_AVAILABLE = True
-    except:
-        PYNVML_AVAILABLE = False
+logger = get_logger("gpu_monitor")
 
 
 @dataclass
@@ -43,6 +25,8 @@ class GPUInfo:
     temperature: int   # 摄氏度
     utilization: int   # 百分比
     power_usage: float  # 瓦特
+    driver_version: str = ""
+    cuda_version: str = ""
     timestamp: datetime = None
     
     def __post_init__(self):
@@ -79,102 +63,300 @@ class GPUMonitor:
         self._monitor_thread = None
         self._callbacks: List[Callable] = []
         self._history: Dict[int, List[GPUInfo]] = {}
-        self._update_interval = 1.0  # 秒
+        self._update_interval = 1.0
         
-        # 检测可用的GPU
+        # GPU检测状态
+        self.gpu_count = 0
+        self.gpu_names = []
+        self._detection_method = None
+        
+        # 检测GPU
         self._detect_gpus()
     
     def _detect_gpus(self):
-        """检测可用的GPU"""
-        self.gpu_count = 0
-        self.gpu_names = []
+        """检测可用的GPU - 多种方法"""
+        logger.info("开始检测GPU...")
         
-        if PYNVML_AVAILABLE:
-            try:
-                self.gpu_count = pynvml.nvmlDeviceGetCount()
-                for i in range(self.gpu_count):
-                    handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-                    name = pynvml.nvmlDeviceGetName(handle)
-                    if isinstance(name, bytes):
-                        name = name.decode('utf-8')
-                    self.gpu_names.append(name)
-                    self._history[i] = []
-            except Exception as e:
-                print(f"检测GPU失败: {e}")
-        elif TORCH_AVAILABLE and torch.cuda.is_available():
+        # 方法1: 尝试使用nvidia-smi
+        if self._detect_via_nvidia_smi():
+            self._detection_method = "nvidia-smi"
+            logger.info(f"通过nvidia-smi检测到 {self.gpu_count} 个GPU")
+            return
+        
+        # 方法2: 尝试使用torch
+        if self._detect_via_torch():
+            self._detection_method = "torch"
+            logger.info(f"通过PyTorch检测到 {self.gpu_count} 个GPU")
+            return
+        
+        # 方法3: 尝试使用nvidia-ml-py/pynvml
+        if self._detect_via_nvml():
+            self._detection_method = "nvml"
+            logger.info(f"通过NVML检测到 {self.gpu_count} 个GPU")
+            return
+        
+        # 未检测到GPU
+        self._detection_method = "none"
+        logger.warning("未检测到NVIDIA GPU")
+    
+    def _detect_via_nvidia_smi(self) -> bool:
+        """通过nvidia-smi检测GPU"""
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free,temperature.gpu,utilization.gpu,power.draw,driver_version", 
+                 "--format=csv,noheader,nounits"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode != 0:
+                return False
+            
+            lines = result.stdout.strip().split('\n')
+            if not lines or not lines[0]:
+                return False
+            
+            self.gpu_count = len(lines)
+            self.gpu_names = []
+            
+            for i, line in enumerate(lines):
+                parts = [p.strip() for p in line.split(',')]
+                if len(parts) >= 8:
+                    self.gpu_names.append(parts[0])
+                    
+                    # 保存初始信息
+                    if i not in self._history:
+                        self._history[i] = []
+                    
+                    info = GPUInfo(
+                        device_id=i,
+                        name=parts[0],
+                        total_memory=int(float(parts[1])),
+                        used_memory=int(float(parts[2])),
+                        free_memory=int(float(parts[3])),
+                        temperature=int(float(parts[4])),
+                        utilization=int(float(parts[5])),
+                        power_usage=float(parts[6]),
+                        driver_version=parts[7]
+                    )
+                    self._history[i].append(info)
+            
+            return True
+            
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+            logger.debug(f"nvidia-smi检测失败: {e}")
+            return False
+    
+    def _detect_via_torch(self) -> bool:
+        """通过PyTorch检测GPU"""
+        try:
+            import torch
+            
+            if not torch.cuda.is_available():
+                return False
+            
             self.gpu_count = torch.cuda.device_count()
+            self.gpu_names = []
+            
             for i in range(self.gpu_count):
-                self.gpu_names.append(torch.cuda.get_device_name(i))
-                self._history[i] = []
+                name = torch.cuda.get_device_name(i)
+                self.gpu_names.append(name)
+                
+                # 获取显存信息
+                props = torch.cuda.get_device_properties(i)
+                total_mem = props.total_memory // (1024 * 1024)
+                
+                if i not in self._history:
+                    self._history[i] = []
+                
+                info = GPUInfo(
+                    device_id=i,
+                    name=name,
+                    total_memory=total_mem,
+                    used_memory=0,
+                    free_memory=total_mem,
+                    temperature=0,
+                    utilization=0,
+                    power_usage=0.0,
+                    cuda_version=torch.version.cuda or ""
+                )
+                self._history[i].append(info)
+            
+            return True
+            
+        except Exception as e:
+            logger.debug(f"PyTorch检测失败: {e}")
+            return False
+    
+    def _detect_via_nvml(self) -> bool:
+        """通过NVML检测GPU"""
+        try:
+            # 尝试nvidia-ml-py
+            try:
+                import nvidia_ml_py as nvml
+                nvml.nvmlInit()
+            except ImportError:
+                import pynvml
+                nvml = pynvml
+                nvml.nvmlInit()
+            
+            self.gpu_count = nvml.nvmlDeviceGetCount()
+            self.gpu_names = []
+            
+            for i in range(self.gpu_count):
+                handle = nvml.nvmlDeviceGetHandleByIndex(i)
+                name = nvml.nvmlDeviceGetName(handle)
+                if isinstance(name, bytes):
+                    name = name.decode('utf-8')
+                self.gpu_names.append(name)
+                
+                if i not in self._history:
+                    self._history[i] = []
+            
+            return True
+            
+        except Exception as e:
+            logger.debug(f"NVML检测失败: {e}")
+            return False
     
     def get_gpu_info(self, device_id: int = 0) -> Optional[GPUInfo]:
         """获取指定GPU的信息"""
         if device_id >= self.gpu_count:
             return None
         
-        if PYNVML_AVAILABLE:
-            try:
-                handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
-                
-                # 获取显存信息
-                mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                total_mem = mem_info.total // (1024 * 1024)
-                used_mem = mem_info.used // (1024 * 1024)
-                free_mem = mem_info.free // (1024 * 1024)
-                
-                # 获取温度
-                try:
-                    temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
-                except:
-                    temp = 0
-                
-                # 获取利用率
-                try:
-                    util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                    gpu_util = util.gpu
-                except:
-                    gpu_util = 0
-                
-                # 获取功耗
-                try:
-                    power = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0
-                except:
-                    power = 0.0
-                
-                return GPUInfo(
-                    device_id=device_id,
-                    name=self.gpu_names[device_id],
-                    total_memory=total_mem,
-                    used_memory=used_mem,
-                    free_memory=free_mem,
-                    temperature=temp,
-                    utilization=gpu_util,
-                    power_usage=power
-                )
-            except Exception as e:
-                print(f"获取GPU信息失败: {e}")
-                return None
+        # 根据检测方法获取信息
+        if self._detection_method == "nvidia-smi":
+            return self._get_info_nvidia_smi(device_id)
+        elif self._detection_method == "torch":
+            return self._get_info_torch(device_id)
+        elif self._detection_method == "nvml":
+            return self._get_info_nvml(device_id)
         
-        elif TORCH_AVAILABLE and torch.cuda.is_available():
-            try:
-                # 使用PyTorch获取信息
-                total_mem = torch.cuda.get_device_properties(device_id).total_memory // (1024 * 1024)
-                used_mem = torch.cuda.memory_allocated(device_id) // (1024 * 1024)
-                free_mem = total_mem - used_mem
-                
+        return None
+    
+    def _get_info_nvidia_smi(self, device_id: int) -> Optional[GPUInfo]:
+        """通过nvidia-smi获取GPU信息"""
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free,temperature.gpu,utilization.gpu,power.draw",
+                 f"--id={device_id}", "--format=csv,noheader,nounits"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode != 0:
+                return None
+            
+            parts = [p.strip() for p in result.stdout.strip().split(',')]
+            if len(parts) >= 7:
                 return GPUInfo(
                     device_id=device_id,
-                    name=self.gpu_names[device_id],
-                    total_memory=total_mem,
-                    used_memory=used_mem,
-                    free_memory=free_mem,
-                    temperature=0,
-                    utilization=0,
-                    power_usage=0.0
+                    name=parts[0],
+                    total_memory=int(float(parts[1])),
+                    used_memory=int(float(parts[2])),
+                    free_memory=int(float(parts[3])),
+                    temperature=int(float(parts[4])),
+                    utilization=int(float(parts[5])),
+                    power_usage=float(parts[6])
                 )
-            except Exception as e:
-                print(f"获取GPU信息失败: {e}")
+        except Exception as e:
+            logger.debug(f"nvidia-smi获取信息失败: {e}")
+        
+        return None
+    
+    def _get_info_torch(self, device_id: int) -> Optional[GPUInfo]:
+        """通过PyTorch获取GPU信息"""
+        try:
+            import torch
+            
+            if device_id >= torch.cuda.device_count():
                 return None
+            
+            name = torch.cuda.get_device_name(device_id)
+            props = torch.cuda.get_device_properties(device_id)
+            total_mem = props.total_memory // (1024 * 1024)
+            used_mem = torch.cuda.memory_allocated(device_id) // (1024 * 1024)
+            free_mem = total_mem - used_mem
+            
+            return GPUInfo(
+                device_id=device_id,
+                name=name,
+                total_memory=total_mem,
+                used_memory=used_mem,
+                free_memory=free_mem,
+                temperature=0,
+                utilization=0,
+                power_usage=0.0,
+                cuda_version=torch.version.cuda or ""
+            )
+        except Exception as e:
+            logger.debug(f"PyTorch获取信息失败: {e}")
+        
+        return None
+    
+    def _get_info_nvml(self, device_id: int) -> Optional[GPUInfo]:
+        """通过NVML获取GPU信息"""
+        try:
+            try:
+                import nvidia_ml_py as nvml
+            except ImportError:
+                import pynvml as nvml
+            
+            handle = nvml.nvmlDeviceGetHandleByIndex(device_id)
+            
+            # 显存信息
+            mem_info = nvml.nvmlDeviceGetMemoryInfo(handle)
+            total_mem = mem_info.total // (1024 * 1024)
+            used_mem = mem_info.used // (1024 * 1024)
+            free_mem = mem_info.free // (1024 * 1024)
+            
+            # 温度
+            try:
+                temp = nvml.nvmlDeviceGetTemperature(handle, nvml.NVML_TEMPERATURE_GPU)
+            except:
+                temp = 0
+            
+            # 利用率
+            try:
+                util = nvml.nvmlDeviceGetUtilizationRates(handle)
+                gpu_util = util.gpu
+            except:
+                gpu_util = 0
+            
+            # 功耗
+            try:
+                power = nvml.nvmlDeviceGetPowerUsage(handle) / 1000.0
+            except:
+                power = 0.0
+            
+            # 名称
+            name = nvml.nvmlDeviceGetName(handle)
+            if isinstance(name, bytes):
+                name = name.decode('utf-8')
+            
+            # 驱动版本
+            try:
+                driver = nvml.nvmlSystemGetDriverVersion()
+                if isinstance(driver, bytes):
+                    driver = driver.decode('utf-8')
+            except:
+                driver = ""
+            
+            return GPUInfo(
+                device_id=device_id,
+                name=name,
+                total_memory=total_mem,
+                used_memory=used_mem,
+                free_memory=free_mem,
+                temperature=temp,
+                utilization=gpu_util,
+                power_usage=power,
+                driver_version=driver
+            )
+        except Exception as e:
+            logger.debug(f"NVML获取信息失败: {e}")
         
         return None
     
@@ -222,7 +404,7 @@ class GPUMonitor:
                 try:
                     callback(self.get_all_gpu_info())
                 except Exception as e:
-                    print(f"回调函数执行失败: {e}")
+                    logger.error(f"回调函数执行失败: {e}")
             
             time.sleep(self._update_interval)
     
@@ -243,21 +425,20 @@ class GPUMonitor:
     
     def clear_cache(self):
         """清除GPU缓存"""
-        if TORCH_AVAILABLE and torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except:
+            pass
     
-    def get_optimal_batch_size(self, device_id: int = 0, model_size_mb: int = 1000) -> int:
-        """根据显存估算最优批次大小"""
-        info = self.get_gpu_info(device_id)
-        if not info:
-            return 1
-        
-        # 预留20%显存作为缓冲
-        available = info.free_memory * 0.8
-        if available < model_size_mb:
-            return 1
-        
-        return max(1, int(available / model_size_mb))
+    def get_detection_info(self) -> Dict:
+        """获取检测信息"""
+        return {
+            "method": self._detection_method,
+            "gpu_count": self.gpu_count,
+            "gpu_names": self.gpu_names
+        }
 
 
 # 全局GPU监控实例
@@ -280,9 +461,9 @@ def format_gpu_info(info: GPUInfo) -> str:
     """格式化GPU信息显示"""
     return (
         f"GPU {info.device_id}: {info.name}\n"
-        f"  显存: {format_memory(info.used_memory)}/{format_memory(info.total_memory)} "
+        f"  VRAM: {format_memory(info.used_memory)}/{format_memory(info.total_memory)} "
         f"({info.memory_usage_percent:.1f}%)\n"
-        f"  温度: {info.temperature}°C\n"
-        f"  利用率: {info.utilization}%\n"
-        f"  功耗: {info.power_usage:.1f}W"
+        f"  Temp: {info.temperature}°C\n"
+        f"  Util: {info.utilization}%\n"
+        f"  Power: {info.power_usage:.1f}W"
     )

@@ -4,14 +4,18 @@ VideoGenAI - 本地AI视频生成软件
 """
 import sys
 import os
+import warnings
 from pathlib import Path
 
-# 抑制pynvml弃用警告
+# 抑制警告
+warnings.filterwarnings("ignore", message=".*pynvml.*")
 os.environ["PYNVML_SUPPRESS_WARNINGS"] = "1"
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
+from utils.i18n import I18n, t
 
 
 def check_dependencies():
@@ -40,11 +44,11 @@ def check_dependencies():
     
     if missing:
         print("=" * 50)
-        print("缺少以下依赖:")
+        print("缺少以下依赖 / Missing dependencies:")
         for dep in missing:
             print(f"  - {dep}")
         print()
-        print("请运行以下命令安装:")
+        print("请运行以下命令安装 / Please install:")
         print("  pip install -r requirements.txt")
         print("=" * 50)
         return False
@@ -54,20 +58,26 @@ def check_dependencies():
 
 def check_gpu():
     """检查GPU"""
-    try:
-        import torch
-        if torch.cuda.is_available():
-            gpu_name = torch.cuda.get_device_name(0)
-            gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-            print(f"检测到GPU: {gpu_name}")
-            print(f"显存: {gpu_memory:.1f} GB")
-            return True
-        else:
-            print("警告: 未检测到CUDA GPU，将使用CPU（速度会很慢）")
-            return True
-    except Exception as e:
-        print(f"检查GPU失败: {e}")
+    from utils.gpu_monitor import get_gpu_monitor, format_memory
+    
+    monitor = get_gpu_monitor()
+    detection_info = monitor.get_detection_info()
+    
+    if detection_info["gpu_count"] > 0:
+        for i, name in enumerate(detection_info["gpu_names"]):
+            info = monitor.get_gpu_info(i)
+            if info:
+                print(t("gpu_detected", name=name))
+                print(t("gpu_vram", size=info.total_memory / 1024))
+            else:
+                print(f"GPU {i}: {name}")
         return True
+    else:
+        print(t("gpu_not_found"))
+        print(f"  检测方法: {detection_info['method']}")
+        print("  请确保已安装NVIDIA驱动和CUDA")
+        print("  Please ensure NVIDIA drivers and CUDA are installed")
+        return False
 
 
 def setup_environment():
@@ -81,34 +91,51 @@ def setup_environment():
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 
+def load_language_setting():
+    """加载语言设置"""
+    try:
+        import json
+        config_path = project_root / "configs" / "config.json"
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                lang = config.get("app", {}).get("language", "zh_CN")
+                I18n.set_language(lang)
+    except:
+        pass
+
+
 def main():
     """主函数"""
+    # 加载语言设置
+    load_language_setting()
+    
     print("=" * 50)
-    print("VideoGenAI - 本地AI视频生成软件")
-    print("版本: 1.0.0")
+    print(t("app_title"))
+    print(t("app_version"))
     print("=" * 50)
     print()
     
     # 检查依赖
-    print("检查依赖...")
+    print(t("check_deps"))
     if not check_dependencies():
         sys.exit(1)
-    print("依赖检查通过")
+    print(t("deps_ok"))
     print()
     
     # 检查GPU
-    print("检查GPU...")
+    print(t("check_gpu"))
     check_gpu()
     print()
     
     # 设置环境
-    print("设置环境...")
+    print(t("setup_env"))
     setup_environment()
-    print("环境设置完成")
+    print(t("env_ok"))
     print()
     
     # 启动GUI
-    print("启动图形界面...")
+    print(t("start_gui"))
     
     try:
         from PySide6.QtWidgets import QApplication
@@ -133,14 +160,14 @@ def main():
         window = MainWindow()
         window.show()
         
-        print("图形界面已启动")
+        print(t("gui_ok"))
         print()
         
         # 运行应用
         sys.exit(app.exec())
         
     except Exception as e:
-        print(f"启动失败: {e}")
+        print(t("start_failed", error=e))
         import traceback
         traceback.print_exc()
         sys.exit(1)
