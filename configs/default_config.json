@@ -1,0 +1,64 @@
+{
+    "app": {
+        "name": "VideoGenAI",
+        "version": "1.0.0",
+        "language": "zh_CN",
+        "theme": "dark"
+    },
+    "models": {
+        "default_model": "wan2.1-t2v-1.3b",
+        "models_dir": "./models",
+        "loras_dir": "./loras",
+        "cache_dir": "./cache",
+        "auto_download": true,
+        "mirror": "huggingface"
+    },
+    "generation": {
+        "default_resolution": "832x480",
+        "default_fps": 16,
+        "default_frames": 81,
+        "default_steps": 50,
+        "default_cfg_scale": 5.0,
+        "default_seed": -1,
+        "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background"
+    },
+    "optimization": {
+        "precision": "auto",
+        "torch_compile": false,
+        "flash_attention": true,
+        "xformers": true,
+        "sage_attention": false,
+        "cpu_offload": false,
+        "sequential_offload": false,
+        "attention_slicing": false,
+        "vae_tiling": true,
+        "low_vram_mode": false,
+        "high_performance_mode": false
+    },
+    "output": {
+        "output_dir": "./outputs",
+        "auto_save_history": true,
+        "auto_save_prompt": true,
+        "filename_pattern": "{timestamp}_{model}_{seed}"
+    },
+    "gpu": {
+        "device_id": 0,
+        "memory_fraction": 0.9,
+        "auto_manage_memory": true
+    },
+    "queue": {
+        "max_concurrent": 1,
+        "auto_retry": true,
+        "max_retries": 3
+    },
+    "updates": {
+        "auto_check": true,
+        "check_interval": 86400
+    },
+    "ui": {
+        "window_width": 1400,
+        "window_height": 900,
+        "font_size": 12,
+        "log_max_lines": 1000
+    }
+}
