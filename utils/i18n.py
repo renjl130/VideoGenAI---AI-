@@ -9,7 +9,6 @@ TRANSLATIONS = {
         "app_name": "VideoGenAI",
         "app_title": "VideoGenAI - 本地AI视频生成软件",
         "app_version": "版本: 1.0.0",
-        
         # 启动信息
         "check_deps": "检查依赖...",
         "deps_ok": "依赖检查通过",
@@ -22,7 +21,6 @@ TRANSLATIONS = {
         "start_gui": "启动图形界面...",
         "gui_ok": "图形界面已启动",
         "start_failed": "启动失败: {error}",
-        
         # GPU状态
         "gpu_status": "GPU 状态",
         "detecting": "检测中...",
@@ -31,7 +29,6 @@ TRANSLATIONS = {
         "temperature": "温度",
         "utilization": "利用率",
         "power": "功耗",
-        
         # 模型选择
         "model_selection": "模型选择",
         "select_model": "选择模型",
@@ -43,7 +40,6 @@ TRANSLATIONS = {
         "model_unloaded": "模型已卸载",
         "loading": "加载中...",
         "unloading": "卸载中...",
-        
         # Prompt
         "prompt": "提示词",
         "prompt_placeholder": "描述你想要生成的视频...",
@@ -51,7 +47,6 @@ TRANSLATIONS = {
         "negative_placeholder": "描述你想避免的内容（可选）...",
         "prompt_history": "历史提示词",
         "refresh": "刷新",
-        
         # 参数设置
         "generation_params": "生成参数",
         "resolution": "分辨率",
@@ -71,15 +66,28 @@ TRANSLATIONS = {
         "random": "随机",
         "random_seed": "随机种子 (-1为随机)",
         "optimization": "优化选项",
+        "scheduler": "采样调度器",
+        "lora": "LoRA",
+        "lora_none": "不使用 LoRA",
+        "profile_balanced": "平衡",
+        "profile_low_vram": "低显存",
+        "profile_high_performance": "高性能",
+        "profile_custom": "自定义",
+        "profile_balanced_summary": ("自动平衡速度与显存；显存不足时后端会安全启用卸载。"),
+        "profile_low_vram_summary": (
+            "最小化显存占用，将更频繁地在 CPU 与 GPU 间搬运模型，速度较慢。"
+        ),
+        "profile_high_performance_summary": (
+            "模型尽量常驻 GPU；显存不足时加载会被拒绝，以避免生成期间崩溃。"
+        ),
+        "profile_custom_summary": ("手动控制兼容选项；冲突配置会在模型加载前被拒绝。"),
         "cpu_offload": "CPU卸载 (低显存)",
         "vae_tiling": "VAE分块",
         "flash_attention": "闪速注意力",
-        
         # 生成按钮
         "generate_video": "生成视频",
         "stop_generation": "停止生成",
         "open_output": "打开输出目录",
-        
         # 任务
         "task_queue": "任务队列",
         "clear": "清除",
@@ -90,22 +98,18 @@ TRANSLATIONS = {
         "failed": "失败",
         "cancelled": "已取消",
         "queue_status": "队列: {pending} 等待 | {running} 运行 | {completed} 完成",
-        
         # 进度
         "progress": "进度",
         "generating": "生成中...",
         "generation_complete": "生成完成！",
         "generation_failed": "生成失败: {error}",
-        
         # 日志
         "log_output": "日志输出",
-        
         # 历史
         "history": "历史记录",
         "refresh_history": "刷新",
         "clear_history": "清空历史",
         "confirm_clear_history": "确定要清空所有历史记录吗？",
-        
         # 菜单
         "file": "文件",
         "model": "模型",
@@ -116,11 +120,15 @@ TRANSLATIONS = {
         "about": "关于",
         "settings": "设置",
         "language": "语言",
-        
         # 关于
         "about_title": "关于 VideoGenAI",
-        "about_text": "<h2>VideoGenAI v1.0.0</h2><p>本地AI视频生成软件</p><p>基于 Wan2.1 开源模型</p><p>100%本地运行，无需联网</p><p>许可证: Apache 2.0</p>",
-        
+        "about_text": (
+            "<h2>VideoGenAI v1.0.0</h2>"
+            "<p>本地AI视频生成软件</p>"
+            "<p>基于 Wan2.1 开源模型</p>"
+            "<p>100%本地运行，无需联网</p>"
+            "<p>许可证: Apache 2.0</p>"
+        ),
         # 对话框
         "confirm": "确认",
         "confirm_exit": "确定要退出吗？",
@@ -132,12 +140,10 @@ TRANSLATIONS = {
         "no": "否",
         "ok": "确定",
         "cancel": "取消",
-        
         # 模型信息
         "type": "类型",
         "license": "许可证",
         "vram_required": "显存需求",
-        
         # 状态
         "ready": "就绪",
         "task_submitted": "任务已提交: {id}",
@@ -145,24 +151,32 @@ TRANSLATIONS = {
         "task_failed": "任务失败: {error}",
         "task_cancelled": "任务已取消: {id}",
         "cache_cleared": "缓存已清除",
-        
         # 下载
-        "confirm_download": "确定要下载模型 {model} 吗？",
-        "download_started": "下载已开始",
-        "download_failed": "下载失败",
-        
+        "confirm_download": (
+            "确定要下载模型 {model}（约 {size:.1f} GiB）吗？\n"
+            "下载可取消，已下载的数据会保留用于续传。"
+        ),
+        "download_started": "模型下载已开始",
+        "download_failed": "模型下载启动失败",
+        "cancel_download": "取消下载",
+        "download_cancel_requested": "已请求取消下载；当前文件传输结束后会停止。",
+        "download_status_downloading": "下载中",
+        "download_status_cancelling": "正在取消",
+        "download_status_completed": "下载完成",
+        "download_status_cancelled": "下载已取消，可稍后续传",
+        "download_status_failed": "下载失败，可重试",
+        "download_status_pending": "等待下载",
+        "download_progress": "{status}: {progress:.1f}%（{downloaded} / {total}）{metrics}",
+        "download_speed": " · {speed:.1f} MiB/s",
+        "download_eta": "，预计剩余 {duration}",
+        "download_error": "：{error}",
         # LoRA
-        "lora": "LoRA",
-        "none": "无",
-        "strength": "强度",
     },
-    
     "en_US": {
         # App info
         "app_name": "VideoGenAI",
         "app_title": "VideoGenAI - Local AI Video Generation",
         "app_version": "Version: 1.0.0",
-        
         # Startup
         "check_deps": "Checking dependencies...",
         "deps_ok": "Dependencies check passed",
@@ -175,7 +189,6 @@ TRANSLATIONS = {
         "start_gui": "Starting GUI...",
         "gui_ok": "GUI started successfully",
         "start_failed": "Startup failed: {error}",
-        
         # GPU Status
         "gpu_status": "GPU Status",
         "detecting": "Detecting...",
@@ -184,7 +197,6 @@ TRANSLATIONS = {
         "temperature": "Temperature",
         "utilization": "Utilization",
         "power": "Power",
-        
         # Model Selection
         "model_selection": "Model Selection",
         "select_model": "Select Model",
@@ -196,7 +208,6 @@ TRANSLATIONS = {
         "model_unloaded": "Model Unloaded",
         "loading": "Loading...",
         "unloading": "Unloading...",
-        
         # Prompt
         "prompt": "Prompt",
         "prompt_placeholder": "Describe the video you want to generate...",
@@ -204,7 +215,6 @@ TRANSLATIONS = {
         "negative_placeholder": "What to avoid in the video (optional)...",
         "prompt_history": "Prompt History",
         "refresh": "Refresh",
-        
         # Parameters
         "generation_params": "Generation Parameters",
         "resolution": "Resolution",
@@ -224,15 +234,35 @@ TRANSLATIONS = {
         "random": "Random",
         "random_seed": "Seed (-1 for random)",
         "optimization": "Optimization",
+        "scheduler": "Scheduler",
+        "lora": "LoRA",
+        "lora_none": "No LoRA",
+        "profile_balanced": "Balanced",
+        "profile_low_vram": "Low VRAM",
+        "profile_high_performance": "High Performance",
+        "profile_custom": "Custom",
+        "profile_balanced_summary": (
+            "Balances speed and memory automatically; the backend safely enables "
+            "offload when VRAM is limited."
+        ),
+        "profile_low_vram_summary": (
+            "Minimizes VRAM use by moving model components between CPU and GPU "
+            "more often; generation is slower."
+        ),
+        "profile_high_performance_summary": (
+            "Keeps the model on GPU where possible; loading is rejected when VRAM is insufficient."
+        ),
+        "profile_custom_summary": (
+            "Manually controls compatible options; conflicting settings are rejected "
+            "before model loading."
+        ),
         "cpu_offload": "CPU Offload (Low VRAM)",
         "vae_tiling": "VAE Tiling",
         "flash_attention": "Flash Attention",
-        
         # Generate buttons
         "generate_video": "Generate Video",
         "stop_generation": "Stop Generation",
         "open_output": "Open Output Folder",
-        
         # Tasks
         "task_queue": "Task Queue",
         "clear": "Clear",
@@ -243,22 +273,18 @@ TRANSLATIONS = {
         "failed": "Failed",
         "cancelled": "Cancelled",
         "queue_status": "Queue: {pending} pending | {running} running | {completed} completed",
-        
         # Progress
         "progress": "Progress",
         "generating": "Generating...",
         "generation_complete": "Generation Complete!",
         "generation_failed": "Generation Failed: {error}",
-        
         # Log
         "log_output": "Log Output",
-        
         # History
         "history": "History",
         "refresh_history": "Refresh",
         "clear_history": "Clear All",
         "confirm_clear_history": "Are you sure you want to clear all history?",
-        
         # Menu
         "file": "File",
         "model": "Model",
@@ -269,11 +295,15 @@ TRANSLATIONS = {
         "about": "About",
         "settings": "Settings",
         "language": "Language",
-        
         # About
         "about_title": "About VideoGenAI",
-        "about_text": "<h2>VideoGenAI v1.0.0</h2><p>Local AI Video Generation Software</p><p>Based on Wan2.1 Open Source Model</p><p>100% Local - No Internet Required</p><p>License: Apache 2.0</p>",
-        
+        "about_text": (
+            "<h2>VideoGenAI v1.0.0</h2>"
+            "<p>Local AI Video Generation Software</p>"
+            "<p>Based on Wan2.1 Open Source Model</p>"
+            "<p>100% Local - No Internet Required</p>"
+            "<p>License: Apache 2.0</p>"
+        ),
         # Dialogs
         "confirm": "Confirm",
         "confirm_exit": "Are you sure you want to exit?",
@@ -285,12 +315,10 @@ TRANSLATIONS = {
         "no": "No",
         "ok": "OK",
         "cancel": "Cancel",
-        
         # Model info
         "type": "Type",
         "license": "License",
         "vram_required": "VRAM Required",
-        
         # Status
         "ready": "Ready",
         "task_submitted": "Task submitted: {id}",
@@ -298,31 +326,43 @@ TRANSLATIONS = {
         "task_failed": "Task failed: {error}",
         "task_cancelled": "Task cancelled: {id}",
         "cache_cleared": "Cache cleared",
-        
         # Download
-        "confirm_download": "Download model {model}?",
-        "download_started": "Download started",
-        "download_failed": "Download failed",
-        
+        "confirm_download": (
+            "Download {model} (about {size:.1f} GiB)?\n"
+            "You can cancel it; downloaded files are kept for resume."
+        ),
+        "download_started": "Model download started",
+        "download_failed": "Could not start model download",
+        "cancel_download": "Cancel Download",
+        "download_cancel_requested": (
+            "Cancellation requested; the current file transfer must finish before it stops."
+        ),
+        "download_status_downloading": "Downloading",
+        "download_status_cancelling": "Cancelling",
+        "download_status_completed": "Download complete",
+        "download_status_cancelled": "Download cancelled; it can be resumed later",
+        "download_status_failed": "Download failed; retry is available",
+        "download_status_pending": "Waiting to download",
+        "download_progress": "{status}: {progress:.1f}% ({downloaded} / {total}){metrics}",
+        "download_speed": " · {speed:.1f} MiB/s",
+        "download_eta": ", ETA {duration}",
+        "download_error": ": {error}",
         # LoRA
-        "lora": "LoRA",
-        "none": "None",
-        "strength": "Strength",
-    }
+    },
 }
 
 
 class I18n:
     """国际化管理器"""
-    
+
     _instance = None
     _current_lang = "zh_CN"
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     @classmethod
     def set_language(cls, lang: str):
         """设置语言"""
@@ -330,33 +370,30 @@ class I18n:
             cls._current_lang = lang
             return True
         return False
-    
+
     @classmethod
     def get_language(cls) -> str:
         """获取当前语言"""
         return cls._current_lang
-    
+
     @classmethod
     def t(cls, key: str, **kwargs) -> str:
         """翻译"""
         lang = TRANSLATIONS.get(cls._current_lang, {})
         text = lang.get(key, key)
-        
+
         if kwargs:
             try:
                 text = text.format(**kwargs)
-            except:
-                pass
-        
+            except (KeyError, ValueError, IndexError):
+                return text
+
         return text
-    
+
     @classmethod
     def get_available_languages(cls) -> dict:
         """获取可用语言"""
-        return {
-            "zh_CN": "中文",
-            "en_US": "English"
-        }
+        return {"zh_CN": "中文", "en_US": "English"}
 
 
 # 便捷翻译函数

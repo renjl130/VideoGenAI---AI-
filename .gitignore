@@ -54,6 +54,7 @@ logs/*
 
 # Config (user specific)
 configs/config.json
+configs/plugins_state.json
 
 # Temporary files
 *.tmp

@@ -1,8 +1,10 @@
 """
 VideoGenAI 安装配置
 """
-from setuptools import setup, find_packages
+
 from pathlib import Path
+
+from setuptools import find_packages, setup
 
 # 读取README
 this_directory = Path(__file__).parent
@@ -12,7 +14,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 requirements = []
 req_file = this_directory / "requirements.txt"
 if req_file.exists():
-    with open(req_file, "r", encoding="utf-8") as f:
+    with open(req_file, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith("#"):

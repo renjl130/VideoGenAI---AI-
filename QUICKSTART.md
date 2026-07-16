@@ -1,129 +1,86 @@
 # VideoGenAI 快速开始指南
 
-## 一分钟快速上手
+## 开始前
 
-### Windows用户
+- Windows 10/11，64 位；
+- NVIDIA GPU。默认 Wan2.1-T2V-1.3B 建议至少 8 GiB 显存，并应使用低显存档位；
+- Python 3.10–3.14，64 位；
+- 默认模型完整下载约 **27 GiB**，请至少预留 60 GiB 可用磁盘空间。
 
-1. **下载项目**
-   - 下载整个项目文件夹到本地
+> 仅在 `nvidia-smi` 中看到显卡并不表示 PyTorch 可以使用 CUDA。启动前应运行环境验证。
 
-2. **双击启动**
-   - 双击 `启动.bat` 文件
-   - 首次运行会自动安装依赖（需要几分钟）
+## 1. 安装或修复 CUDA 环境
 
-3. **开始使用**
-   - 等待程序启动
-   - 选择模型
-   - 输入Prompt
-   - 点击"生成视频"
+在项目根目录执行：
 
-### 详细步骤
-
-#### 第一步：环境准备
-
-确保已安装Python 3.10+：
-```bash
-python --version
+```powershell
+python scripts/setup_environment.py --backend cuda --venv .venv
 ```
 
-如果未安装，请从 https://www.python.org/downloads/ 下载安装。
+如果已有虚拟环境安装了 CPU 版 PyTorch，请使用：
 
-#### 第二步：启动程序
-
-**方法一：使用启动脚本（推荐）**
-- 双击 `启动.bat`
-
-**方法二：命令行启动**
-```bash
-# 创建虚拟环境
-python -m venv .venv
-
-# 激活虚拟环境
-.venv\Scripts\activate
-
-# 安装依赖
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 启动程序
-python main.py
+```powershell
+.\.venv\Scripts\python.exe scripts/setup_environment.py --backend cuda --venv .venv --force-torch
 ```
 
-#### 第三步：首次使用
+也可以双击 `setup_cuda.bat`。安装完成后验证：
 
-1. **等待模型下载**
-   - 首次启动会自动下载模型
-   - 模型大小约5GB
-   - 请确保网络畅通
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_project.py --mode environment
+```
 
-2. **选择模型**
-   - 在左侧面板选择模型
-   - 推荐初学者使用 `wan2.1-t2v-1.3b`（显存需求最低）
+该命令必须显示 CUDA runtime 通过，才能进行视频推理。
 
-3. **输入Prompt**
-   - 在Prompt输入框描述你想要的视频
-   - 例如：`A cat playing with a ball of yarn`
+## 2. 启动程序
 
-4. **调整参数**
-   - 分辨率：480P（默认）或720P
-   - 帧数：81（约5秒视频）
-   - 步数：50（质量与速度的平衡）
+- 双击 `start.bat`；或
+- 在 PowerShell 运行：
 
-5. **生成视频**
-   - 点击"生成视频"按钮
-   - 等待生成完成
-   - 视频自动保存到 `outputs` 目录
+```powershell
+.\.venv\Scripts\python.exe launcher.py
+```
+
+`launcher.py` 会在启动前检查项目虚拟环境、CUDA PyTorch 和 NVIDIA 设备。不要用旧的通用 `pip install -r requirements.txt` 流程代替 CUDA 安装步骤，因为 `requirements.txt` 有意不包含 PyTorch。
+
+## 3. 下载并加载模型
+
+1. 在左侧模型区域选择 `wan2.1-t2v-1.3b`。
+2. 点击“下载模型”。完整 Diffusers 包约 27 GiB；如果网络中断，保留的部分文件会在下次下载时续传。
+3. 状态为“完整 / Ready”后，选择低显存性能档位并点击“加载模型”。
+4. 输入 Prompt，建议先使用较低分辨率、17 或 21 帧及较少步数进行首个验证。
+
+只有通过以下完整运行前检查后，才表示环境和默认模型均已准备好：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_project.py --mode runtime
+```
 
 ## 常见问题
 
-### Q: 显存不足怎么办？
+### CUDA runtime 校验失败
 
-A: 尝试以下方法：
-1. 使用1.3B模型（显存需求最低8GB）
-2. 勾选"CPU Offload"选项
-3. 降低分辨率到480P
-4. 减少帧数
+运行：
 
-### Q: 生成速度很慢？
-
-A: 可以尝试：
-1. 使用更少的步数（如30步）
-2. 降低分辨率
-3. 使用更小的模型
-
-### Q: 如何使用国内镜像？
-
-A: 安装时使用清华镜像：
-```bash
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```powershell
+.\.venv\Scripts\python.exe scripts/setup_environment.py --backend cuda --venv .venv --force-torch
 ```
 
-### Q: 模型下载失败？
+然后重新执行 `scripts/verify_project.py --mode environment`。不要仅通过 UI 能启动就认定推理环境正确。
 
-A: 可以：
-1. 检查网络连接
-2. 使用VPN或代理
-3. 手动下载模型放到 `models` 目录
+### 显存不足
 
-## 系统要求
+1. 选择 `low_vram` 性能档位；
+2. 使用 1.3B T2V 模型；
+3. 降低分辨率、帧数和推理步数；
+4. 确保没有其他程序占用显存；
+5. 查看任务失败记录中的 OOM 诊断和建议。
 
-| 项目 | 最低配置 | 推荐配置 |
-|------|----------|----------|
-| 操作系统 | Windows 10 | Windows 11 |
-| Python | 3.10 | 3.11+ |
-| GPU | GTX 1060 6GB | RTX 3060 12GB+ |
-| 显存 | 8GB | 24GB |
-| 内存 | 16GB | 32GB |
-| 硬盘 | 50GB | 100GB+ |
+### 模型下载失败或中断
 
-## 获取帮助
-
-- 查看 `README.md` 获取详细文档
-- 查看 `logs` 目录获取运行日志
-- 提交Issue反馈问题
+再次点击“下载模型”即可续传。不要把未完成的模型目录手动标记为可用；应用会校验 Diffusers 配置、权重索引及分片完整性。
 
 ## 下一步
 
-- 尝试不同的Prompt和参数
-- 探索LoRA和ControlNet功能
-- 查看历史记录和Prompt库
-- 自定义配置文件
+- 查看 `README.md` 了解完整配置和质量门禁；
+- 在 `outputs/` 查看生成结果，在 `outputs/history/` 查看任务历史；
+- 在调整模型、Scheduler、LoRA 或性能档位后，先用一个小任务验证。

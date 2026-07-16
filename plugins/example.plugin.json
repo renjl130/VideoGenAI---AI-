@@ -1,0 +1,11 @@
+{
+    "id": "example",
+    "name": "Example Plugin",
+    "version": "1.0.0",
+    "api_version": "1.0",
+    "entrypoint": "example_plugin.py:ExamplePlugin",
+    "plugin_type": "utility",
+    "author": "VideoGenAI",
+    "description": "Built-in disabled example plugin for the manifest-based API.",
+    "dependencies": []
+}

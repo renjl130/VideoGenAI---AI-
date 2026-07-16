@@ -1,125 +1,98 @@
-"""
-VideoGenAI 启动器
-双击即可启动应用程序
-"""
-import sys
+"""VideoGenAI launcher with explicit environment readiness checks."""
+
+from __future__ import annotations
+
 import os
 import subprocess
+import sys
 from pathlib import Path
 
-
-def get_python_exe():
-    """获取Python可执行文件路径"""
-    # 优先使用虚拟环境
-    venv_path = Path(__file__).parent / ".venv"
-    if venv_path.exists():
-        if sys.platform == "win32":
-            return str(venv_path / "Scripts" / "python.exe")
-        else:
-            return str(venv_path / "bin" / "python")
-    
-    # 使用系统Python
-    return sys.executable
+PROJECT_ROOT = Path(__file__).resolve().parent
+VENV_PATH = PROJECT_ROOT / ".venv"
 
 
-def check_venv():
-    """检查虚拟环境"""
-    venv_path = Path(__file__).parent / ".venv"
-    return venv_path.exists()
+def venv_python_path() -> Path:
+    relative = "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+    return VENV_PATH / relative
 
 
-def create_venv():
-    """创建虚拟环境"""
-    print("正在创建虚拟环境...")
-    subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True)
-    print("虚拟环境创建完成")
+def get_python_exe() -> str:
+    candidate = venv_python_path()
+    return str(candidate if candidate.is_file() else Path(sys.executable))
 
 
-def install_dependencies():
-    """安装依赖"""
-    python_exe = get_python_exe()
-    requirements = Path(__file__).parent / "requirements.txt"
-    
-    if requirements.exists():
-        print("正在安装依赖...")
-        subprocess.run([
-            python_exe, "-m", "pip", "install", "-r", str(requirements)
-        ], check=True)
-        print("依赖安装完成")
-    else:
-        print("警告: requirements.txt 不存在")
+def check_venv() -> bool:
+    return venv_python_path().is_file()
 
 
-def check_torch_cuda():
-    """检查PyTorch CUDA支持"""
-    python_exe = get_python_exe()
-    
-    try:
-        result = subprocess.run([
-            python_exe, "-c", 
-            "import torch; print('CUDA:', torch.cuda.is_available()); "
-            "print('Version:', torch.__version__)"
-        ], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            print(result.stdout)
-            return "True" in result.stdout
-    except Exception:
-        pass
-    
-    return False
+def create_environment() -> None:
+    """Create the pinned CUDA environment through the maintained setup workflow."""
+    command = [
+        sys.executable,
+        str(PROJECT_ROOT / "scripts" / "setup_environment.py"),
+        "--backend",
+        "cuda",
+        "--venv",
+        str(VENV_PATH),
+    ]
+    subprocess.run(command, cwd=PROJECT_ROOT, check=True)
 
 
-def install_torch_cuda():
-    """安装CUDA版本的PyTorch"""
-    python_exe = get_python_exe()
-    
-    print("正在安装 CUDA 版本的 PyTorch...")
-    subprocess.run([
-        python_exe, "-m", "pip", "install", 
-        "torch", "torchvision", "torchaudio",
-        "--index-url", "https://download.pytorch.org/whl/cu121"
-    ], check=True)
-    print("PyTorch CUDA 安装完成")
+def verify_environment() -> bool:
+    result = subprocess.run(
+        [
+            get_python_exe(),
+            str(PROJECT_ROOT / "scripts" / "verify_project.py"),
+            "--mode",
+            "environment",
+        ],
+        cwd=PROJECT_ROOT,
+        check=False,
+    )
+    return result.returncode == 0
 
 
-def main():
-    """主函数"""
-    print("=" * 50)
-    print("VideoGenAI 启动器")
-    print("=" * 50)
+def print_repair_command() -> None:
     print()
-    
-    # 切换到项目目录
-    os.chdir(Path(__file__).parent)
-    
-    # 检查虚拟环境
-    if not check_venv():
-        print("首次运行，正在初始化...")
-        create_venv()
-        install_dependencies()
-        
-        # 检查并安装CUDA PyTorch
-        if not check_torch_cuda():
-            install_torch_cuda()
-        
-        print()
-        print("初始化完成！")
-        print()
-    
-    # 启动主程序
-    print("正在启动 VideoGenAI...")
-    python_exe = get_python_exe()
-    
+    print("VideoGenAI cannot start GPU inference with the current environment.")
+    print("Run this repair command from the project directory:")
+    print(
+        subprocess.list2cmdline(
+            [
+                get_python_exe(),
+                "scripts/setup_environment.py",
+                "--backend",
+                "cuda",
+                "--force-torch",
+            ]
+        )
+    )
+
+
+def main() -> int:
+    os.chdir(PROJECT_ROOT)
+    print("=" * 50)
+    print("VideoGenAI Launcher")
+    print("=" * 50)
+
     try:
-        subprocess.run([python_exe, "main.py"], check=True)
+        if not check_venv():
+            print("No project virtual environment found; creating the pinned CUDA environment.")
+            create_environment()
+        if not verify_environment():
+            print_repair_command()
+            return 2
+        subprocess.run([get_python_exe(), str(PROJECT_ROOT / "main.py")], check=True)
+        return 0
     except KeyboardInterrupt:
-        print("\n程序已退出")
-    except Exception as e:
-        print(f"\n启动失败: {e}")
-        print("请尝试手动运行: python main.py")
-        input("按 Enter 键退出...")
+        print()
+        print("VideoGenAI exited.")
+        return 130
+    except subprocess.CalledProcessError as error:
+        print()
+        print(f"Launcher command failed with exit code {error.returncode}.")
+        return error.returncode or 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

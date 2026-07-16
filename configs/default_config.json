@@ -20,7 +20,8 @@
         "default_steps": 50,
         "default_cfg_scale": 5.0,
         "default_seed": -1,
-        "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background"
+        "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background",
+        "scheduler": "unipc"
     },
     "optimization": {
         "precision": "auto",
@@ -33,7 +34,8 @@
         "attention_slicing": false,
         "vae_tiling": true,
         "low_vram_mode": false,
-        "high_performance_mode": false
+        "high_performance_mode": false,
+        "performance_profile": "balanced"
     },
     "output": {
         "output_dir": "./outputs",

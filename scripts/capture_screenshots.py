@@ -1,44 +1,45 @@
+# ruff: noqa: E501, W293
 """
 截图脚本 - 捕获UI界面截图
 """
+
 import sys
-import os
 from pathlib import Path
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+
 def capture_screenshots():
     """捕获UI截图"""
     try:
-        from PySide6.QtWidgets import QApplication
         from PySide6.QtCore import QTimer
-        from PySide6.QtGui import QPixmap
-        
+        from PySide6.QtWidgets import QApplication
+
         from ui.main_window import MainWindow
-        
+
         # 创建应用
         app = QApplication(sys.argv)
-        
+
         # 创建主窗口
         window = MainWindow()
         window.show()
-        
+
         # 确保截图目录存在
         screenshots_dir = project_root / "screenshots"
         screenshots_dir.mkdir(exist_ok=True)
-        
+
         def take_screenshot():
             """截图函数"""
             # 截取整个窗口
             pixmap = window.grab()
-            
+
             # 保存截图
             screenshot_path = screenshots_dir / "main_window.png"
             pixmap.save(str(screenshot_path))
             print(f"Screenshot saved: {screenshot_path}")
-            
+
             # 截取左侧面板
             left_panel = window.findChild(type(window), "left_panel")
             if left_panel:
@@ -46,7 +47,7 @@ def capture_screenshots():
                 left_path = screenshots_dir / "left_panel.png"
                 left_pixmap.save(str(left_path))
                 print(f"Left panel saved: {left_path}")
-            
+
             # 截取右侧面板
             right_panel = window.findChild(type(window), "right_panel")
             if right_panel:
@@ -54,18 +55,18 @@ def capture_screenshots():
                 right_path = screenshots_dir / "right_panel.png"
                 right_pixmap.save(str(right_path))
                 print(f"Right panel saved: {right_path}")
-            
+
             # 退出应用
             app.quit()
-        
+
         # 延迟截图，确保UI完全加载
         QTimer.singleShot(1000, take_screenshot)
-        
+
         # 运行应用
         app.exec()
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Error capturing screenshots: {e}")
         return False
@@ -75,7 +76,7 @@ def create_demo_screenshots():
     """创建演示截图（如果无法运行GUI）"""
     screenshots_dir = project_root / "screenshots"
     screenshots_dir.mkdir(exist_ok=True)
-    
+
     # 创建一个简单的HTML预览
     html_content = """
 <!DOCTYPE html>
@@ -411,11 +412,11 @@ def create_demo_screenshots():
 </body>
 </html>
 """
-    
+
     html_path = screenshots_dir / "ui_preview.html"
-    with open(html_path, 'w', encoding='utf-8') as f:
+    with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    
+
     print(f"UI preview created: {html_path}")
     return True
 
@@ -424,19 +425,19 @@ def main():
     print("=" * 60)
     print("  VideoGenAI Screenshot Capture")
     print("=" * 60)
-    
+
     # 尝试捕获真实截图
     print("\nAttempting to capture real screenshots...")
     if capture_screenshots():
         print("Real screenshots captured successfully!")
         return 0
-    
+
     # 如果失败，创建演示截图
     print("\nCreating demo UI preview...")
     if create_demo_screenshots():
         print("Demo preview created successfully!")
         return 0
-    
+
     return 1
 
 
