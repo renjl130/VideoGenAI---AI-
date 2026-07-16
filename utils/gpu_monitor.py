@@ -285,6 +285,13 @@ class GPUMonitor:
                 logger.info("GPU缓存已清除")
         except:
             pass
+    
+    def get_detection_info(self) -> Dict:
+        """获取检测信息"""
+        return {
+            "gpu_count": self.gpu_count,
+            "gpu_names": self.gpu_names
+        }
 
 
 # 全局实例
