@@ -392,8 +392,11 @@ class GPUStatusWidget(QWidget):
             monitor = get_gpu_monitor()
             gpu_infos = monitor.get_all_gpu_info()
             
+            logger.debug(f"GPU检测: 找到 {len(gpu_infos)} 个GPU")
+            
             if gpu_infos and len(gpu_infos) > 0:
                 info = gpu_infos[0]
+                logger.debug(f"GPU 0: {info.name}, 显存: {info.used_memory}/{info.total_memory}MB, 温度: {info.temperature}°C")
                 
                 # GPU名称
                 self._name_label.setText(f"GPU: {info.name}")
