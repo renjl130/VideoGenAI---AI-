@@ -15,6 +15,27 @@
 
 VideoGenAI 是一款完全本地运行的AI视频生成软件，基于最新的开源视频生成模型，无需联网即可使用。
 
+## 📸 界面预览
+
+<div align="center">
+
+### 主界面
+![Main Interface](screenshots/main_window.png)
+
+### 深色主题UI
+| GPU状态 | 模型选择 | 参数设置 |
+|:-------:|:-------:|:-------:|
+| ![GPU](screenshots/gpu_status.png) | ![Model](screenshots/model_selection.png) | ![Params](screenshots/parameters.png) |
+
+### 生成过程
+| 任务队列 | 生成进度 | 日志输出 |
+|:-------:|:-------:|:-------:|
+| ![Tasks](screenshots/task_queue.png) | ![Progress](screenshots/progress.png) | ![Logs](screenshots/log_output.png) |
+
+</div>
+
+> 💡 **提示**: 查看 [screenshots/ui_preview.html](screenshots/ui_preview.html) 获取完整的UI预览
+
 ### ✨ 核心特性
 
 - **100%本地运行** - 所有推理在本地GPU完成，无需调用任何付费API
