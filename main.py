@@ -6,6 +6,9 @@ import sys
 import os
 from pathlib import Path
 
+# 抑制pynvml弃用警告
+os.environ["PYNVML_SUPPRESS_WARNINGS"] = "1"
+
 # 添加项目根目录到路径
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -112,7 +115,7 @@ def main():
         from PySide6.QtCore import Qt
         from PySide6.QtGui import QFont
         
-        from ui.main_window import MainWindow, DarkTheme
+        from ui.main_window import MainWindow, MODERN_DARK_THEME
         
         # 创建应用
         app = QApplication(sys.argv)
@@ -124,7 +127,7 @@ def main():
         app.setFont(font)
         
         # 应用深色主题
-        DarkTheme.apply(app)
+        app.setStyleSheet(MODERN_DARK_THEME)
         
         # 创建主窗口
         window = MainWindow()
