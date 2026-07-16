@@ -14,12 +14,22 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
+# 尝试导入nvidia-ml-py（推荐）或pynvml（已弃用）
+PYNVML_AVAILABLE = False
+pynvml = None
+
 try:
-    import pynvml
-    pynvml.nvmlInit()
+    import nvidia_ml_py as nvml
+    nvml.nvmlInit()
+    pynvml = nvml
     PYNVML_AVAILABLE = True
-except:
-    PYNVML_AVAILABLE = False
+except ImportError:
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        PYNVML_AVAILABLE = True
+    except:
+        PYNVML_AVAILABLE = False
 
 
 @dataclass
