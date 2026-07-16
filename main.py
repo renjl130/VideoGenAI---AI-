@@ -142,7 +142,7 @@ def main():
         from PySide6.QtCore import Qt
         from PySide6.QtGui import QFont
         
-        from ui.main_window import MainWindow, MODERN_DARK_THEME
+        from ui.main_window import MainWindow, ELEGANT_THEME
         
         # 创建应用
         app = QApplication(sys.argv)
@@ -154,7 +154,7 @@ def main():
         app.setFont(font)
         
         # 应用深色主题
-        app.setStyleSheet(MODERN_DARK_THEME)
+        app.setStyleSheet(ELEGANT_THEME)
         
         # 创建主窗口
         window = MainWindow()
