@@ -1,6 +1,6 @@
 """
 VideoGenAI - 主窗口
-现代化深色主题UI设计 + 多语言支持
+高级黑白线条风格UI设计
 """
 import sys
 import os
@@ -17,506 +17,782 @@ from PySide6.QtWidgets import (
     QFrame, QGridLayout, QSizePolicy, QApplication
 )
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QIcon, QFont, QAction
+from PySide6.QtGui import QIcon, QFont, QAction, QColor, QPalette
 
 from backend.engine_manager import get_backend_manager, BackendManager
 from utils.task_queue import TaskType, TaskStatus
-from utils.gpu_monitor import format_memory, format_gpu_info
+from utils.gpu_monitor import format_memory, format_gpu_info, get_gpu_monitor
 from utils.logger import get_logger
 from utils.i18n import I18n, t
 
 logger = get_logger("ui")
 
 
-# ==================== 现代化深色主题 ====================
+# ==================== 高级黑白线条主题 ====================
 
-MODERN_DARK_THEME = """
-/* 全局样式 */
-QMainWindow {
-    background-color: #0f0f0f;
-}
-
-QWidget {
-    background-color: #0f0f0f;
-    color: #e0e0e0;
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+ELEGANT_THEME = """
+/* 全局 - 纯黑背景 */
+QMainWindow, QWidget {
+    background-color: #000000;
+    color: #ffffff;
+    font-family: "Segoe UI", "Microsoft YaHei", "Arial";
     font-size: 13px;
 }
 
-/* 分组框 */
+/* 分组框 - 细线边框 */
 QGroupBox {
-    background-color: #1a1a2e;
-    border: 1px solid #2a2a4a;
-    border-radius: 12px;
-    margin-top: 14px;
-    padding: 18px 12px 12px 12px;
-    font-weight: 600;
-    font-size: 13px;
+    background-color: transparent;
+    border: 1px solid #333333;
+    border-radius: 2px;
+    margin-top: 12px;
+    padding: 16px 10px 10px 10px;
+    font-weight: 400;
+    font-size: 12px;
+    color: #888888;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 16px;
-    padding: 0 8px;
-    color: #7c8aff;
-    font-size: 14px;
+    left: 12px;
+    padding: 0 6px;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
-/* 按钮基础样式 */
+/* 按钮 - 白色边框风格 */
 QPushButton {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 13px;
-    min-height: 20px;
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid #444444;
+    padding: 8px 16px;
+    border-radius: 1px;
+    font-weight: 500;
+    font-size: 12px;
+    min-height: 18px;
 }
 
 QPushButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
+    background-color: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
 }
 
 QPushButton:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4338ca, stop:1 #6d28d9);
+    background-color: #cccccc;
+    color: #000000;
 }
 
 QPushButton:disabled {
-    background-color: #2a2a3e;
-    color: #555;
+    border-color: #222222;
+    color: #444444;
 }
 
-/* 生成按钮 - 特殊样式 */
+/* 主按钮 - 白色填充 */
 QPushButton#generateBtn {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
-    font-size: 16px;
-    padding: 14px 28px;
-    min-height: 30px;
+    background-color: #ffffff;
+    color: #000000;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 24px;
+    letter-spacing: 2px;
 }
 
 QPushButton#generateBtn:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #34d399, stop:1 #10b981);
+    background-color: #e0e0e0;
 }
 
-/* 停止按钮 */
+/* 停止按钮 - 红色边框 */
 QPushButton#stopBtn {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #ef4444, stop:1 #dc2626);
+    border-color: #ff4444;
+    color: #ff4444;
 }
 
 QPushButton#stopBtn:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f87171, stop:1 #ef4444);
+    background-color: #ff4444;
+    color: #ffffff;
 }
 
 /* 次要按钮 */
 QPushButton#secondaryBtn {
-    background: #2a2a3e;
-    border: 1px solid #3a3a5e;
+    border-color: #333333;
+    color: #888888;
 }
 
 QPushButton#secondaryBtn:hover {
-    background: #3a3a5e;
+    border-color: #ffffff;
+    color: #ffffff;
 }
 
-/* 输入框 */
+/* 输入框 - 极简线条 */
 QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
-    background-color: #16162a;
-    color: #e0e0e0;
-    border: 2px solid #2a2a4a;
-    padding: 8px 12px;
-    border-radius: 8px;
+    background-color: #0a0a0a;
+    color: #ffffff;
+    border: 1px solid #333333;
+    border-radius: 1px;
+    padding: 8px 10px;
     font-size: 13px;
-    selection-background-color: #4f46e5;
+    selection-background-color: #ffffff;
+    selection-color: #000000;
 }
 
 QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
-    border-color: #7c8aff;
-    background-color: #1a1a30;
+    border-color: #ffffff;
 }
 
 QComboBox::drop-down {
     border: none;
-    width: 30px;
+    width: 24px;
 }
 
 QComboBox::down-arrow {
     image: none;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 8px solid #7c8aff;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #ffffff;
 }
 
 QComboBox QAbstractItemView {
-    background-color: #1a1a2e;
-    border: 1px solid #3a3a5e;
-    selection-background-color: #4f46e5;
-    color: #e0e0e0;
+    background-color: #0a0a0a;
+    border: 1px solid #333333;
+    selection-background-color: #ffffff;
+    selection-color: #000000;
+    color: #ffffff;
 }
 
-/* 进度条 */
+/* 进度条 - 黑白 */
 QProgressBar {
-    background-color: #16162a;
-    border: 1px solid #2a2a4a;
-    border-radius: 8px;
+    background-color: #111111;
+    border: 1px solid #333333;
+    border-radius: 1px;
     text-align: center;
-    color: white;
+    color: #ffffff;
     font-weight: 600;
-    min-height: 24px;
+    min-height: 20px;
+    font-size: 11px;
 }
 
 QProgressBar::chunk {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
-    border-radius: 7px;
+    background-color: #ffffff;
 }
 
-/* 列表 */
+/* 列表 - 简洁线条 */
 QListWidget {
-    background-color: #16162a;
-    border: 1px solid #2a2a4a;
-    border-radius: 8px;
-    padding: 4px;
+    background-color: #050505;
+    border: 1px solid #222222;
+    border-radius: 1px;
+    padding: 2px;
 }
 
 QListWidget::item {
-    padding: 10px 12px;
-    border-bottom: 1px solid #1a1a2e;
-    border-radius: 6px;
-    margin: 2px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #111111;
+    margin: 1px;
 }
 
 QListWidget::item:selected {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
-    color: white;
+    background-color: #ffffff;
+    color: #000000;
 }
 
 QListWidget::item:hover {
-    background-color: #1e1e36;
+    background-color: #111111;
 }
 
 /* 标签页 */
 QTabWidget::pane {
-    border: 1px solid #2a2a4a;
-    background-color: #1a1a2e;
-    border-radius: 8px;
+    border: 1px solid #333333;
+    background-color: #000000;
 }
 
 QTabBar::tab {
-    background-color: #16162a;
-    color: #888;
-    padding: 10px 20px;
-    border: 1px solid #2a2a4a;
+    background-color: transparent;
+    color: #666666;
+    padding: 8px 16px;
+    border: 1px solid #333333;
     border-bottom: none;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    margin-right: 2px;
+    margin-right: 1px;
+    font-size: 11px;
     font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 QTabBar::tab:selected {
-    background-color: #1a1a2e;
-    color: #7c8aff;
-    border-bottom: 2px solid #7c8aff;
+    background-color: #000000;
+    color: #ffffff;
+    border-bottom: 1px solid #000000;
 }
 
 QTabBar::tab:hover {
-    background-color: #1e1e36;
-    color: #e0e0e0;
+    color: #ffffff;
 }
 
-/* 滚动条 */
+/* 滚动条 - 极细 */
 QScrollBar:vertical {
-    background-color: #0f0f0f;
-    width: 10px;
+    background-color: #000000;
+    width: 6px;
     border: none;
-    border-radius: 5px;
 }
 
 QScrollBar::handle:vertical {
-    background-color: #3a3a5e;
-    border-radius: 5px;
+    background-color: #333333;
     min-height: 30px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background-color: #7c8aff;
+    background-color: #666666;
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
 
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-    background: none;
-}
-
 /* 标签 */
 QLabel {
-    color: #e0e0e0;
-}
-
-QLabel#titleLabel {
-    font-size: 24px;
-    font-weight: 700;
-    color: #7c8aff;
-}
-
-QLabel#subtitleLabel {
-    color: #888;
-    font-size: 12px;
-}
-
-QLabel#sectionLabel {
-    color: #7c8aff;
-    font-weight: 600;
-    font-size: 14px;
+    color: #ffffff;
+    background: transparent;
 }
 
 /* 复选框 */
 QCheckBox {
     spacing: 8px;
-    font-size: 13px;
+    color: #cccccc;
+    background: transparent;
 }
 
 QCheckBox::indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    border: 2px solid #3a3a5e;
-    background-color: #16162a;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #444444;
+    border-radius: 1px;
+    background-color: transparent;
 }
 
 QCheckBox::indicator:checked {
-    background-color: #4f46e5;
-    border-color: #7c8aff;
-}
-
-QCheckBox::indicator:hover {
-    border-color: #7c8aff;
+    background-color: #ffffff;
+    border-color: #ffffff;
 }
 
 /* 分割器 */
 QSplitter::handle {
-    background-color: #2a2a4a;
-    width: 2px;
-}
-
-QSplitter::handle:hover {
-    background-color: #7c8aff;
+    background-color: #222222;
+    width: 1px;
 }
 
 /* 状态栏 */
 QStatusBar {
-    background-color: #16162a;
-    color: #888;
-    border-top: 1px solid #2a2a4a;
-    font-size: 12px;
+    background-color: #000000;
+    color: #666666;
+    border-top: 1px solid #222222;
+    font-size: 11px;
 }
 
 /* 菜单栏 */
 QMenuBar {
-    background-color: #16162a;
-    color: #e0e0e0;
-    border-bottom: 1px solid #2a2a4a;
+    background-color: #000000;
+    color: #ffffff;
+    border-bottom: 1px solid #222222;
+    font-size: 12px;
 }
 
 QMenuBar::item:selected {
-    background-color: #2a2a4a;
+    background-color: #222222;
 }
 
 QMenu {
-    background-color: #1a1a2e;
-    border: 1px solid #2a2a4a;
-    border-radius: 8px;
+    background-color: #0a0a0a;
+    border: 1px solid #333333;
     padding: 4px;
 }
 
 QMenu::item {
-    padding: 8px 24px;
-    border-radius: 4px;
+    padding: 6px 20px;
 }
 
 QMenu::item:selected {
-    background-color: #4f46e5;
-}
-
-/* 工具提示 */
-QToolTip {
-    background-color: #1a1a2e;
-    color: #e0e0e0;
-    border: 1px solid #3a3a5e;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
+    background-color: #ffffff;
+    color: #000000;
 }
 """
 
 
-class StyledCard(QFrame):
-    """现代化卡片组件"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: #1a1a2e;
-                border: 1px solid #2a2a4a;
-                border-radius: 12px;
-                padding: 12px;
-            }
-        """)
-
-
-class GPUStatusCard(StyledCard):
-    """GPU状态卡片"""
+class GPUStatusWidget(QWidget):
+    """GPU状态显示 - 实时更新"""
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()
         self._update_timer = QTimer()
-        self._update_timer.timeout.connect(self._update_status)
-        self._update_timer.start(2000)
+        self._update_timer.timeout.connect(self._update_gpu_status)
+        self._update_timer.start(1000)  # 每秒更新
+        
+        # 立即更新一次
+        QTimer.singleShot(100, self._update_gpu_status)
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        
-        # 标题
-        self._title = QLabel(t("gpu_status"))
-        self._title.setStyleSheet("color: #7c8aff; font-weight: 600; font-size: 14px;")
-        layout.addWidget(self._title)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
         
         # GPU名称
-        self._gpu_name = QLabel(t("detecting"))
-        self._gpu_name.setStyleSheet("font-size: 16px; font-weight: 600;")
-        layout.addWidget(self._gpu_name)
+        self._name_label = QLabel("GPU: --")
+        self._name_label.setStyleSheet("font-size: 12px; font-weight: 600; color: #ffffff;")
+        layout.addWidget(self._name_label)
         
-        # 显存进度条
-        mem_layout = QVBoxLayout()
+        # 显存使用
+        mem_layout = QHBoxLayout()
+        mem_layout.setSpacing(8)
         
-        mem_header = QHBoxLayout()
-        self._vram_label = QLabel(t("vram"))
-        mem_header.addWidget(self._vram_label)
-        self._mem_percent = QLabel("0%")
-        self._mem_percent.setStyleSheet("color: #7c8aff; font-weight: 600;")
-        mem_header.addWidget(self._mem_percent, alignment=Qt.AlignRight)
-        mem_layout.addLayout(mem_header)
+        self._vram_label = QLabel("VRAM: -- / -- GB")
+        self._vram_label.setStyleSheet("font-size: 11px; color: #888888;")
+        mem_layout.addWidget(self._vram_label)
         
-        self._mem_bar = QProgressBar()
-        self._mem_bar.setMaximumHeight(12)
-        self._mem_bar.setTextVisible(False)
-        mem_layout.addWidget(self._mem_bar)
+        self._vram_percent = QLabel("(0%)")
+        self._vram_percent.setStyleSheet("font-size: 11px; color: #666666;")
+        mem_layout.addWidget(self._vram_percent)
         
-        self._mem_text = QLabel("0 / 0 GB")
-        self._mem_text.setStyleSheet("color: #888; font-size: 12px;")
-        mem_layout.addWidget(self._mem_text)
-        
+        mem_layout.addStretch()
         layout.addLayout(mem_layout)
         
-        # 详细信息网格
-        info_grid = QGridLayout()
-        info_grid.setSpacing(8)
+        # 进度条
+        self._vram_bar = QProgressBar()
+        self._vram_bar.setMaximumHeight(4)
+        self._vram_bar.setTextVisible(False)
+        self._vram_bar.setStyleSheet("""
+            QProgressBar { background-color: #222222; border: none; }
+            QProgressBar::chunk { background-color: #ffffff; }
+        """)
+        layout.addWidget(self._vram_bar)
         
-        info_grid.addWidget(QLabel(t("temperature") + ":"), 0, 0)
-        self._temp_label = QLabel("-- °C")
-        self._temp_label.setStyleSheet("font-weight: 600;")
-        info_grid.addWidget(self._temp_label, 0, 1)
+        # 温度/利用率/功耗
+        info_layout = QHBoxLayout()
+        info_layout.setSpacing(16)
         
-        info_grid.addWidget(QLabel(t("utilization") + ":"), 1, 0)
-        self._util_label = QLabel("-- %")
-        self._util_label.setStyleSheet("font-weight: 600;")
-        info_grid.addWidget(self._util_label, 1, 1)
+        self._temp_label = QLabel("TEMP: --°C")
+        self._temp_label.setStyleSheet("font-size: 11px; color: #888888;")
+        info_layout.addWidget(self._temp_label)
         
-        info_grid.addWidget(QLabel(t("power") + ":"), 2, 0)
-        self._power_label = QLabel("-- W")
-        self._power_label.setStyleSheet("font-weight: 600;")
-        info_grid.addWidget(self._power_label, 2, 1)
+        self._util_label = QLabel("UTIL: --%")
+        self._util_label.setStyleSheet("font-size: 11px; color: #888888;")
+        info_layout.addWidget(self._util_label)
         
-        layout.addLayout(info_grid)
+        self._power_label = QLabel("POWER: --W")
+        self._power_label.setStyleSheet("font-size: 11px; color: #888888;")
+        info_layout.addWidget(self._power_label)
+        
+        info_layout.addStretch()
+        layout.addLayout(info_layout)
     
-    def _update_status(self):
+    def _update_gpu_status(self):
+        """更新GPU状态"""
         try:
-            backend = get_backend_manager()
-            gpu_infos = backend.get_gpu_info()
+            monitor = get_gpu_monitor()
+            gpu_infos = monitor.get_all_gpu_info()
             
-            if gpu_infos:
+            if gpu_infos and len(gpu_infos) > 0:
                 info = gpu_infos[0]
-                self._gpu_name.setText(info.name)
                 
-                usage = info.memory_usage_percent
-                self._mem_bar.setValue(int(usage))
-                self._mem_percent.setText(f"{usage:.1f}%")
-                self._mem_text.setText(f"{format_memory(info.used_memory)} / {format_memory(info.total_memory)}")
+                # GPU名称
+                self._name_label.setText(f"GPU: {info.name}")
                 
-                if usage > 90:
-                    color = "#ef4444"
-                elif usage > 70:
-                    color = "#f59e0b"
+                # 显存
+                used_gb = info.used_memory / 1024
+                total_gb = info.total_memory / 1024
+                percent = info.memory_usage_percent
+                
+                self._vram_label.setText(f"VRAM: {used_gb:.1f} / {total_gb:.1f} GB")
+                self._vram_percent.setText(f"({percent:.0f}%)")
+                self._vram_bar.setValue(int(percent))
+                
+                # 温度 - 根据温度改变颜色
+                temp = info.temperature
+                if temp > 80:
+                    temp_color = "#ff4444"
+                elif temp > 60:
+                    temp_color = "#ffaa00"
                 else:
-                    color = "#10b981"
+                    temp_color = "#888888"
+                self._temp_label.setText(f"TEMP: {temp}°C")
+                self._temp_label.setStyleSheet(f"font-size: 11px; color: {temp_color};")
                 
-                self._mem_bar.setStyleSheet(f"""
-                    QProgressBar::chunk {{
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {color}, stop:1 {color}88);
-                        border-radius: 5px;
-                    }}
-                """)
+                # 利用率
+                util = info.utilization
+                self._util_label.setText(f"UTIL: {util}%")
                 
-                self._temp_label.setText(f"{info.temperature} °C")
-                self._util_label.setText(f"{info.utilization} %")
-                self._power_label.setText(f"{info.power_usage:.1f} W")
+                # 功耗
+                power = info.power_usage
+                self._power_label.setText(f"POWER: {power:.0f}W")
+                
             else:
-                self._gpu_name.setText(t("no_gpu"))
+                self._name_label.setText("GPU: 未检测到")
+                self._vram_label.setText("VRAM: N/A")
+                self._vram_percent.setText("")
+                self._vram_bar.setValue(0)
+                self._temp_label.setText("TEMP: N/A")
+                self._util_label.setText("UTIL: N/A")
+                self._power_label.setText("POWER: N/A")
+                
         except Exception as e:
-            logger.error(f"GPU status update failed: {e}")
+            logger.error(f"GPU状态更新失败: {e}")
 
 
-class ModelPanel(StyledCard):
-    """模型选择面板"""
+class MainWindow(QMainWindow):
+    """主窗口"""
     
-    model_changed = Signal(str)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
+        self._backend = get_backend_manager()
         self._setup_ui()
-        self._load_models()
+        self._setup_menu()
+        self._setup_status_bar()
     
     def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(12)
+        self.setWindowTitle(t("app_title"))
+        self.setMinimumSize(1400, 900)
+        self.resize(1600, 1000)
         
-        self._title = QLabel(t("model_selection"))
-        self._title.setStyleSheet("color: #7c8aff; font-weight: 600; font-size: 14px;")
-        layout.addWidget(self._title)
+        # 应用主题
+        self.setStyleSheet(ELEGANT_THEME)
+        
+        # 中心部件
+        central = QWidget()
+        self.setCentralWidget(central)
+        
+        # 主布局 - 左右分栏
+        main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(8)
+        
+        # ===== 左侧面板 =====
+        left_panel = QWidget()
+        left_panel.setFixedWidth(380)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
+        
+        # GPU状态栏
+        gpu_frame = QFrame()
+        gpu_frame.setStyleSheet("QFrame { border: 1px solid #333333; padding: 8px; }")
+        gpu_layout = QVBoxLayout(gpu_frame)
+        gpu_layout.setContentsMargins(8, 8, 8, 8)
+        
+        self._gpu_widget = GPUStatusWidget()
+        gpu_layout.addWidget(self._gpu_widget)
+        left_layout.addWidget(gpu_frame)
+        
+        # 模型选择
+        model_group = QGroupBox(t("model_selection"))
+        model_layout = QVBoxLayout(model_group)
+        model_layout.setSpacing(8)
         
         self._model_combo = QComboBox()
-        self._model_combo.setMinimumHeight(40)
+        self._model_combo.setMinimumHeight(36)
         self._model_combo.currentTextChanged.connect(self._on_model_changed)
-        layout.addWidget(self._model_combo)
+        model_layout.addWidget(self._model_combo)
         
-        self._model_info = QLabel(t("select_model"))
-        self._model_info.setWordWrap(True)
-        self._model_info.setStyleSheet("color: #888; font-size: 12px; padding: 8px;")
-        layout.addWidget(self._model_info)
+        self._model_info_label = QLabel(t("select_model"))
+        self._model_info_label.setStyleSheet("color: #666666; font-size: 11px;")
+        self._model_info_label.setWordWrap(True)
+        model_layout.addWidget(self._model_info_label)
         
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(8)
-        
+        btn_row = QHBoxLayout()
         self._load_btn = QPushButton(t("load_model"))
         self._load_btn.clicked.connect(self._load_model)
-        btn_layout.addWidget(self._load_btn)
+        btn_row.addWidget(self._load_btn)
         
         self._unload_btn = QPushButton(t("unload_model"))
         self._unload_btn.setObjectName("secondaryBtn")
         self._unload_btn.clicked.connect(self._unload_model)
         self._unload_btn.setEnabled(False)
-        btn_layout.addWidget(self._unload_btn)
-        
-        layout.addLayout(btn_layout)
+        btn_row.addWidget(self._unload_btn)
+        model_layout.addLayout(btn_row)
         
         self._download_btn = QPushButton(t("download_model"))
         self._download_btn.setObjectName("secondaryBtn")
         self._download_btn.clicked.connect(self._download_model)
-        layout.addWidget(self._download_btn)
+        model_layout.addWidget(self._download_btn)
+        
+        left_layout.addWidget(model_group)
+        
+        # Prompt输入 - 大尺寸
+        prompt_group = QGroupBox(t("prompt"))
+        prompt_layout = QVBoxLayout(prompt_group)
+        prompt_layout.setSpacing(6)
+        
+        self._prompt_edit = QTextEdit()
+        self._prompt_edit.setPlaceholderText(t("prompt_placeholder"))
+        self._prompt_edit.setMinimumHeight(120)
+        self._prompt_edit.setMaximumHeight(200)
+        prompt_layout.addWidget(self._prompt_edit)
+        
+        # Prompt历史
+        history_row = QHBoxLayout()
+        self._history_combo = QComboBox()
+        self._history_combo.addItem(t("prompt_history"))
+        self._history_combo.currentTextChanged.connect(self._on_history_selected)
+        history_row.addWidget(self._history_combo)
+        
+        refresh_btn = QPushButton(t("refresh"))
+        refresh_btn.setObjectName("secondaryBtn")
+        refresh_btn.setFixedWidth(60)
+        refresh_btn.clicked.connect(self._load_prompt_history)
+        history_row.addWidget(refresh_btn)
+        prompt_layout.addLayout(history_row)
+        
+        left_layout.addWidget(prompt_group)
+        
+        # Negative Prompt
+        neg_group = QGroupBox(t("negative_prompt"))
+        neg_layout = QVBoxLayout(neg_group)
+        
+        self._neg_prompt_edit = QTextEdit()
+        self._neg_prompt_edit.setPlaceholderText(t("negative_placeholder"))
+        self._neg_prompt_edit.setMinimumHeight(60)
+        self._neg_prompt_edit.setMaximumHeight(100)
+        neg_layout.addWidget(self._neg_prompt_edit)
+        
+        left_layout.addWidget(neg_group)
+        
+        # 参数设置 - 紧凑布局
+        params_group = QGroupBox(t("generation_params"))
+        params_grid = QGridLayout(params_group)
+        params_grid.setSpacing(8)
+        
+        # 第一行: 分辨率
+        params_grid.addWidget(QLabel(t("width")), 0, 0)
+        self._width_spin = QSpinBox()
+        self._width_spin.setRange(256, 1920)
+        self._width_spin.setValue(832)
+        self._width_spin.setSingleStep(64)
+        params_grid.addWidget(self._width_spin, 0, 1)
+        
+        params_grid.addWidget(QLabel(t("height")), 0, 2)
+        self._height_spin = QSpinBox()
+        self._height_spin.setRange(256, 1080)
+        self._height_spin.setValue(480)
+        self._height_spin.setSingleStep(64)
+        params_grid.addWidget(self._height_spin, 0, 3)
+        
+        # 第二行: 帧数/FPS
+        params_grid.addWidget(QLabel(t("frames")), 1, 0)
+        self._frames_spin = QSpinBox()
+        self._frames_spin.setRange(1, 200)
+        self._frames_spin.setValue(81)
+        params_grid.addWidget(self._frames_spin, 1, 1)
+        
+        params_grid.addWidget(QLabel(t("fps")), 1, 2)
+        self._fps_spin = QSpinBox()
+        self._fps_spin.setRange(1, 30)
+        self._fps_spin.setValue(16)
+        params_grid.addWidget(self._fps_spin, 1, 3)
+        
+        # 第三行: Steps/CFG
+        params_grid.addWidget(QLabel(t("steps")), 2, 0)
+        self._steps_spin = QSpinBox()
+        self._steps_spin.setRange(1, 100)
+        self._steps_spin.setValue(50)
+        params_grid.addWidget(self._steps_spin, 2, 1)
+        
+        params_grid.addWidget(QLabel(t("cfg_scale")), 2, 2)
+        self._cfg_spin = QDoubleSpinBox()
+        self._cfg_spin.setRange(1.0, 20.0)
+        self._cfg_spin.setValue(5.0)
+        self._cfg_spin.setSingleStep(0.5)
+        params_grid.addWidget(self._cfg_spin, 2, 3)
+        
+        # 第四行: Seed
+        params_grid.addWidget(QLabel(t("seed")), 3, 0)
+        seed_row = QHBoxLayout()
+        self._seed_spin = QSpinBox()
+        self._seed_spin.setRange(-1, 2147483647)
+        self._seed_spin.setValue(-1)
+        seed_row.addWidget(self._seed_spin)
+        
+        random_btn = QPushButton(t("random"))
+        random_btn.setObjectName("secondaryBtn")
+        random_btn.setFixedWidth(50)
+        random_btn.clicked.connect(self._random_seed)
+        seed_row.addWidget(random_btn)
+        params_grid.addLayout(seed_row, 3, 1, 1, 3)
+        
+        left_layout.addWidget(params_group)
+        
+        # 优化选项
+        opt_group = QGroupBox(t("optimization"))
+        opt_layout = QVBoxLayout(opt_group)
+        opt_layout.setSpacing(6)
+        
+        self._cpu_offload_cb = QCheckBox(t("cpu_offload"))
+        opt_layout.addWidget(self._cpu_offload_cb)
+        
+        self._vae_tiling_cb = QCheckBox(t("vae_tiling"))
+        self._vae_tiling_cb.setChecked(True)
+        opt_layout.addWidget(self._vae_tiling_cb)
+        
+        self._flash_attn_cb = QCheckBox(t("flash_attention"))
+        self._flash_attn_cb.setChecked(True)
+        opt_layout.addWidget(self._flash_attn_cb)
+        
+        left_layout.addWidget(opt_group)
+        
+        left_layout.addStretch()
+        
+        # 底部按钮
+        self._generate_btn = QPushButton(t("generate_video"))
+        self._generate_btn.setObjectName("generateBtn")
+        self._generate_btn.clicked.connect(self._generate)
+        left_layout.addWidget(self._generate_btn)
+        
+        self._stop_btn = QPushButton(t("stop_generation"))
+        self._stop_btn.setObjectName("stopBtn")
+        self._stop_btn.setEnabled(False)
+        self._stop_btn.clicked.connect(self._stop_generation)
+        left_layout.addWidget(self._stop_btn)
+        
+        self._output_btn = QPushButton(t("open_output"))
+        self._output_btn.setObjectName("secondaryBtn")
+        self._output_btn.clicked.connect(self._open_output_dir)
+        left_layout.addWidget(self._output_btn)
+        
+        main_layout.addWidget(left_panel)
+        
+        # ===== 右侧面板 =====
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(8)
+        
+        # 标签页
+        self._tab_widget = QTabWidget()
+        
+        # 任务列表
+        task_tab = QWidget()
+        task_layout = QVBoxLayout(task_tab)
+        task_layout.setContentsMargins(8, 8, 8, 8)
+        
+        self._task_list = QListWidget()
+        task_layout.addWidget(self._task_list)
+        
+        task_status_layout = QHBoxLayout()
+        self._task_status_label = QLabel("")
+        self._task_status_label.setStyleSheet("color: #666666; font-size: 11px;")
+        task_status_layout.addWidget(self._task_status_label)
+        task_status_layout.addStretch()
+        
+        clear_btn = QPushButton(t("clear"))
+        clear_btn.setObjectName("secondaryBtn")
+        clear_btn.setFixedWidth(60)
+        clear_btn.clicked.connect(self._clear_tasks)
+        task_status_layout.addWidget(clear_btn)
+        task_layout.addLayout(task_status_layout)
+        
+        self._tab_widget.addTab(task_tab, t("task_queue"))
+        
+        # 日志
+        log_tab = QWidget()
+        log_layout = QVBoxLayout(log_tab)
+        log_layout.setContentsMargins(8, 8, 8, 8)
+        
+        self._log_text = QTextEdit()
+        self._log_text.setReadOnly(True)
+        self._log_text.setFont(QFont("Consolas", 10))
+        self._log_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #050505;
+                border: 1px solid #222222;
+                font-family: "Consolas", "Courier New", monospace;
+                font-size: 11px;
+            }
+        """)
+        log_layout.addWidget(self._log_text)
+        
+        self._tab_widget.addTab(log_tab, t("log_output"))
+        
+        # 历史
+        history_tab = QWidget()
+        history_layout = QVBoxLayout(history_tab)
+        history_layout.setContentsMargins(8, 8, 8, 8)
+        
+        self._history_list = QListWidget()
+        history_layout.addWidget(self._history_list)
+        
+        history_btn_layout = QHBoxLayout()
+        refresh_history_btn = QPushButton(t("refresh"))
+        refresh_history_btn.setObjectName("secondaryBtn")
+        refresh_history_btn.clicked.connect(self._load_history)
+        history_btn_layout.addWidget(refresh_history_btn)
+        
+        clear_history_btn = QPushButton(t("clear_history"))
+        clear_history_btn.setObjectName("secondaryBtn")
+        clear_history_btn.clicked.connect(self._clear_history)
+        history_btn_layout.addWidget(clear_history_btn)
+        history_layout.addLayout(history_btn_layout)
+        
+        self._tab_widget.addTab(history_tab, t("history"))
+        
+        right_layout.addWidget(self._tab_widget)
+        
+        # 进度条
+        self._progress_frame = QFrame()
+        self._progress_frame.setStyleSheet("QFrame { border: 1px solid #333333; }")
+        self._progress_frame.setVisible(False)
+        progress_layout = QVBoxLayout(self._progress_frame)
+        progress_layout.setContentsMargins(8, 8, 8, 8)
+        
+        self._progress_bar = QProgressBar()
+        self._progress_bar.setMaximumHeight(16)
+        self._progress_bar.setTextVisible(True)
+        progress_layout.addWidget(self._progress_bar)
+        
+        self._progress_label = QLabel("")
+        self._progress_label.setAlignment(Qt.AlignCenter)
+        self._progress_label.setStyleSheet("color: #888888; font-size: 11px;")
+        progress_layout.addWidget(self._progress_label)
+        
+        right_layout.addWidget(self._progress_frame)
+        
+        main_layout.addWidget(right_panel)
+        
+        # 初始化
+        self._load_models()
+        self._load_prompt_history()
+        self._load_history()
+        
+        # 任务更新定时器
+        self._task_timer = QTimer()
+        self._task_timer.timeout.connect(self._update_tasks)
+        self._task_timer.start(1000)
+    
+    def _setup_menu(self):
+        menubar = self.menuBar()
+        
+        file_menu = menubar.addMenu(t("file"))
+        file_menu.addAction(t("open_output"), self._open_output_dir)
+        file_menu.addSeparator()
+        file_menu.addAction(t("exit"), self.close)
+        
+        model_menu = menubar.addMenu(t("model"))
+        model_menu.addAction(t("load_model"), self._load_model)
+        model_menu.addAction(t("unload_model"), self._unload_model)
+        model_menu.addAction(t("download_model"), self._download_model)
+        
+        tools_menu = menubar.addMenu(t("tools"))
+        tools_menu.addAction(t("clear_cache"), self._clear_cache)
+        
+        lang_menu = menubar.addMenu(t("language"))
+        lang_menu.addAction("中文", lambda: self._change_language("zh_CN"))
+        lang_menu.addAction("English", lambda: self._change_language("en_US"))
+        
+        help_menu = menubar.addMenu(t("help"))
+        help_menu.addAction(t("about"), self._show_about)
+    
+    def _setup_status_bar(self):
+        self._status_bar = QStatusBar()
+        self.setStatusBar(self._status_bar)
+        self._status_bar.showMessage(t("ready"))
     
     def _load_models(self):
         try:
@@ -526,10 +802,10 @@ class ModelPanel(StyledCard):
             
             self._model_combo.clear()
             for model_id, info in available.items():
-                status = "✓" if model_id in downloaded else "↓"
+                status = "●" if model_id in downloaded else "○"
                 self._model_combo.addItem(f"{status} {info.description}", model_id)
         except Exception as e:
-            logger.error(f"Failed to load models: {e}")
+            logger.error(f"加载模型列表失败: {e}")
     
     def _on_model_changed(self, text):
         model_id = self._model_combo.currentData()
@@ -537,11 +813,10 @@ class ModelPanel(StyledCard):
             backend = get_backend_manager()
             info = backend.get_available_models().get(model_id)
             if info:
-                self._model_info.setText(
-                    f"{t('type')}: {info.task_type} | {t('resolution')}: {info.resolution}\n"
-                    f"{t('vram_required')}: {info.vram_required} GB | {t('license')}: {info.license}"
+                self._model_info_label.setText(
+                    f"{t('type')}: {info.task_type} | {t('resolution')}: {info.resolution} | "
+                    f"{t('vram_required')}: {info.vram_required}GB | {t('license')}: {info.license}"
                 )
-            self.model_changed.emit(model_id)
     
     def _load_model(self):
         model_id = self._model_combo.currentData()
@@ -556,10 +831,9 @@ class ModelPanel(StyledCard):
             if backend.load_model(model_id):
                 self._load_btn.setText(t("model_loaded"))
                 self._unload_btn.setEnabled(True)
-                QMessageBox.information(self, t("success"), t("model_loaded"))
             else:
                 self._load_btn.setText(t("load_model"))
-                QMessageBox.warning(self, t("error"), t("load_model") + " " + t("failed"))
+                QMessageBox.warning(self, t("error"), t("load_model") + " failed")
         except Exception as e:
             self._load_btn.setText(t("load_model"))
             QMessageBox.critical(self, t("error"), str(e))
@@ -596,55 +870,7 @@ class ModelPanel(StyledCard):
             except Exception as e:
                 QMessageBox.critical(self, t("error"), str(e))
     
-    def get_selected_model(self) -> str:
-        return self._model_combo.currentData() or ""
-
-
-class PromptPanel(StyledCard):
-    """Prompt输入面板"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._setup_ui()
-    
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        
-        prompt_label = QLabel(t("prompt"))
-        prompt_label.setStyleSheet("color: #7c8aff; font-weight: 600; font-size: 14px;")
-        layout.addWidget(prompt_label)
-        
-        self._prompt_edit = QTextEdit()
-        self._prompt_edit.setPlaceholderText(t("prompt_placeholder"))
-        self._prompt_edit.setMaximumHeight(100)
-        layout.addWidget(self._prompt_edit)
-        
-        history_layout = QHBoxLayout()
-        self._history_combo = QComboBox()
-        self._history_combo.addItem(t("prompt_history"))
-        self._history_combo.currentTextChanged.connect(self._on_history_selected)
-        history_layout.addWidget(self._history_combo)
-        
-        self._refresh_btn = QPushButton(t("refresh"))
-        self._refresh_btn.setObjectName("secondaryBtn")
-        self._refresh_btn.setMaximumWidth(80)
-        self._refresh_btn.clicked.connect(self._load_history)
-        history_layout.addWidget(self._refresh_btn)
-        layout.addLayout(history_layout)
-        
-        neg_label = QLabel(t("negative_prompt"))
-        neg_label.setStyleSheet("color: #f87171; font-weight: 600; font-size: 14px;")
-        layout.addWidget(neg_label)
-        
-        self._neg_prompt_edit = QTextEdit()
-        self._neg_prompt_edit.setPlaceholderText(t("negative_placeholder"))
-        self._neg_prompt_edit.setMaximumHeight(70)
-        layout.addWidget(self._neg_prompt_edit)
-        
-        self._load_history()
-    
-    def _load_history(self):
+    def _load_prompt_history(self):
         try:
             backend = get_backend_manager()
             prompts = backend.get_prompt_history(limit=20)
@@ -652,10 +878,10 @@ class PromptPanel(StyledCard):
             self._history_combo.clear()
             self._history_combo.addItem(t("prompt_history"))
             for p in prompts:
-                text = p["prompt"][:40] + "..." if len(p["prompt"]) > 40 else p["prompt"]
+                text = p["prompt"][:35] + "..." if len(p["prompt"]) > 35 else p["prompt"]
                 self._history_combo.addItem(text, p["prompt"])
         except Exception as e:
-            logger.error(f"Failed to load prompt history: {e}")
+            logger.error(f"加载Prompt历史失败: {e}")
     
     def _on_history_selected(self, text):
         if text != t("prompt_history"):
@@ -663,154 +889,19 @@ class PromptPanel(StyledCard):
             if prompt:
                 self._prompt_edit.setPlainText(prompt)
     
-    def get_prompt(self) -> str:
-        return self._prompt_edit.toPlainText().strip()
-    
-    def get_negative_prompt(self) -> str:
-        return self._neg_prompt_edit.toPlainText().strip()
-
-
-class ParametersPanel(StyledCard):
-    """参数设置面板"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._setup_ui()
-    
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        
-        title = QLabel(t("generation_params"))
-        title.setStyleSheet("color: #7c8aff; font-weight: 600; font-size: 14px;")
-        layout.addWidget(title)
-        
-        # 分辨率
-        res_group = QGroupBox(t("resolution"))
-        res_layout = QGridLayout(res_group)
-        res_layout.setSpacing(8)
-        
-        res_layout.addWidget(QLabel(t("width") + ":"), 0, 0)
-        self._width_spin = QSpinBox()
-        self._width_spin.setRange(256, 1920)
-        self._width_spin.setValue(832)
-        self._width_spin.setSingleStep(64)
-        res_layout.addWidget(self._width_spin, 0, 1)
-        
-        res_layout.addWidget(QLabel(t("height") + ":"), 1, 0)
-        self._height_spin = QSpinBox()
-        self._height_spin.setRange(256, 1080)
-        self._height_spin.setValue(480)
-        self._height_spin.setSingleStep(64)
-        res_layout.addWidget(self._height_spin, 1, 1)
-        
-        self._preset_combo = QComboBox()
-        self._preset_combo.addItems(["480P (832x480)", "720P (1280x720)", t("custom")])
-        self._preset_combo.currentTextChanged.connect(self._on_preset_changed)
-        res_layout.addWidget(QLabel(t("preset") + ":"), 2, 0)
-        res_layout.addWidget(self._preset_combo, 2, 1)
-        
-        layout.addWidget(res_group)
-        
-        # 视频参数
-        video_group = QGroupBox(t("video_settings"))
-        video_layout = QGridLayout(video_group)
-        video_layout.setSpacing(8)
-        
-        video_layout.addWidget(QLabel(t("frames") + ":"), 0, 0)
-        self._frames_spin = QSpinBox()
-        self._frames_spin.setRange(1, 200)
-        self._frames_spin.setValue(81)
-        video_layout.addWidget(self._frames_spin, 0, 1)
-        
-        video_layout.addWidget(QLabel(t("fps") + ":"), 1, 0)
-        self._fps_spin = QSpinBox()
-        self._fps_spin.setRange(1, 30)
-        self._fps_spin.setValue(16)
-        video_layout.addWidget(self._fps_spin, 1, 1)
-        
-        video_layout.addWidget(QLabel(t("duration") + ":"), 2, 0)
-        self._duration_label = QLabel(f"5.1 {t('seconds')}")
-        self._duration_label.setStyleSheet("color: #7c8aff; font-weight: 600;")
-        video_layout.addWidget(self._duration_label, 2, 1)
-        
-        self._frames_spin.valueChanged.connect(self._update_duration)
-        self._fps_spin.valueChanged.connect(self._update_duration)
-        
-        layout.addWidget(video_group)
-        
-        # 生成参数
-        gen_group = QGroupBox(t("generation_settings"))
-        gen_layout = QGridLayout(gen_group)
-        gen_layout.setSpacing(8)
-        
-        gen_layout.addWidget(QLabel(t("steps") + ":"), 0, 0)
-        self._steps_spin = QSpinBox()
-        self._steps_spin.setRange(1, 100)
-        self._steps_spin.setValue(50)
-        gen_layout.addWidget(self._steps_spin, 0, 1)
-        
-        gen_layout.addWidget(QLabel(t("cfg_scale") + ":"), 1, 0)
-        self._cfg_spin = QDoubleSpinBox()
-        self._cfg_spin.setRange(1.0, 20.0)
-        self._cfg_spin.setValue(5.0)
-        self._cfg_spin.setSingleStep(0.5)
-        gen_layout.addWidget(self._cfg_spin, 1, 1)
-        
-        gen_layout.addWidget(QLabel(t("seed") + ":"), 2, 0)
-        seed_layout = QHBoxLayout()
-        self._seed_spin = QSpinBox()
-        self._seed_spin.setRange(-1, 2147483647)
-        self._seed_spin.setValue(-1)
-        seed_layout.addWidget(self._seed_spin)
-        self._random_btn = QPushButton(t("random"))
-        self._random_btn.setObjectName("secondaryBtn")
-        self._random_btn.setMaximumWidth(70)
-        self._random_btn.clicked.connect(self._random_seed)
-        seed_layout.addWidget(self._random_btn)
-        gen_layout.addLayout(seed_layout, 2, 1)
-        
-        layout.addWidget(gen_group)
-        
-        # 优化选项
-        opt_group = QGroupBox(t("optimization"))
-        opt_layout = QVBoxLayout(opt_group)
-        opt_layout.setSpacing(8)
-        
-        self._cpu_offload = QCheckBox(t("cpu_offload"))
-        opt_layout.addWidget(self._cpu_offload)
-        
-        self._vae_tiling = QCheckBox(t("vae_tiling"))
-        self._vae_tiling.setChecked(True)
-        opt_layout.addWidget(self._vae_tiling)
-        
-        self._flash_attn = QCheckBox(t("flash_attention"))
-        self._flash_attn.setChecked(True)
-        opt_layout.addWidget(self._flash_attn)
-        
-        layout.addWidget(opt_group)
-    
-    def _on_preset_changed(self, text):
-        if "480P" in text:
-            self._width_spin.setValue(832)
-            self._height_spin.setValue(480)
-        elif "720P" in text:
-            self._width_spin.setValue(1280)
-            self._height_spin.setValue(720)
-    
-    def _update_duration(self):
-        frames = self._frames_spin.value()
-        fps = self._fps_spin.value()
-        if fps > 0:
-            duration = frames / fps
-            self._duration_label.setText(f"{duration:.1f} {t('seconds')}")
-    
     def _random_seed(self):
         import random
         self._seed_spin.setValue(random.randint(0, 2147483647))
     
-    def get_params(self) -> Dict[str, Any]:
-        return {
+    def _generate(self):
+        prompt = self._prompt_edit.toPlainText().strip()
+        if not prompt:
+            QMessageBox.warning(self, t("warning"), t("prompt_placeholder"))
+            return
+        
+        negative_prompt = self._neg_prompt_edit.toPlainText().strip()
+        
+        params = {
             "width": self._width_spin.value(),
             "height": self._height_spin.value(),
             "num_frames": self._frames_spin.value(),
@@ -818,391 +909,18 @@ class ParametersPanel(StyledCard):
             "steps": self._steps_spin.value(),
             "cfg_scale": self._cfg_spin.value(),
             "seed": self._seed_spin.value(),
-            "cpu_offload": self._cpu_offload.isChecked(),
-            "vae_tiling": self._vae_tiling.isChecked(),
-            "flash_attention": self._flash_attn.isChecked()
+            "cpu_offload": self._cpu_offload_cb.isChecked(),
+            "vae_tiling": self._vae_tiling_cb.isChecked(),
+            "flash_attention": self._flash_attn_cb.isChecked()
         }
-
-
-class TaskListPanel(StyledCard):
-    """任务列表面板"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._setup_ui()
-        self._update_timer = QTimer()
-        self._update_timer.timeout.connect(self._update_tasks)
-        self._update_timer.start(1000)
-    
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
         
-        header = QHBoxLayout()
-        self._title = QLabel(t("task_queue"))
-        self._title.setStyleSheet("color: #7c8aff; font-weight: 600; font-size: 14px;")
-        header.addWidget(self._title)
-        
-        self._clear_btn = QPushButton(t("clear"))
-        self._clear_btn.setObjectName("secondaryBtn")
-        self._clear_btn.setMaximumWidth(60)
-        self._clear_btn.clicked.connect(self._clear_completed)
-        header.addWidget(self._clear_btn)
-        layout.addLayout(header)
-        
-        self._task_list = QListWidget()
-        layout.addWidget(self._task_list)
-        
-        self._status_label = QLabel("")
-        self._status_label.setStyleSheet("color: #888; font-size: 12px;")
-        layout.addWidget(self._status_label)
-    
-    def _update_tasks(self):
-        try:
-            backend = get_backend_manager()
-            queue = backend.get_task_queue()
-            status = queue.get_queue_status()
-            
-            self._status_label.setText(
-                t("queue_status", 
-                  pending=status['pending'], 
-                  running=status['running'], 
-                  completed=status['completed'])
-            )
-            
-            tasks = queue.get_all_tasks()
-            if self._task_list.count() != len(tasks):
-                self._task_list.clear()
-                for task in tasks:
-                    status_text = {
-                        TaskStatus.PENDING: t("pending"),
-                        TaskStatus.RUNNING: t("running"),
-                        TaskStatus.COMPLETED: t("completed"),
-                        TaskStatus.FAILED: t("failed"),
-                        TaskStatus.CANCELLED: t("cancelled")
-                    }
-                    icon = status_text.get(task.status, "???")
-                    progress = f" [{task.progress:.0f}%]" if task.status == TaskStatus.RUNNING else ""
-                    self._task_list.addItem(f"[{icon}] {task.task_id}: {task.prompt[:25]}...{progress}")
-        except Exception as e:
-            logger.error(f"Failed to update tasks: {e}")
-    
-    def _clear_completed(self):
-        try:
-            backend = get_backend_manager()
-            backend.get_task_queue().clear_completed()
-        except Exception as e:
-            logger.error(f"Failed to clear tasks: {e}")
-
-
-class LogPanel(StyledCard):
-    """日志面板"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._setup_ui()
-        self._log_lines = []
-        self._max_lines = 500
-    
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        
-        header = QHBoxLayout()
-        self._title = QLabel(t("log_output"))
-        self._title.setStyleSheet("color: #7c8aff; font-weight: 600; font-size: 14px;")
-        header.addWidget(self._title)
-        
-        self._clear_btn = QPushButton(t("clear"))
-        self._clear_btn.setObjectName("secondaryBtn")
-        self._clear_btn.setMaximumWidth(60)
-        self._clear_btn.clicked.connect(self._clear_log)
-        header.addWidget(self._clear_btn)
-        layout.addLayout(header)
-        
-        self._log_text = QTextEdit()
-        self._log_text.setReadOnly(True)
-        self._log_text.setFont(QFont("Consolas", 11))
-        self._log_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #0a0a1a;
-                font-family: "Consolas", "Courier New", monospace;
-                font-size: 11px;
-                padding: 8px;
-            }
-        """)
-        layout.addWidget(self._log_text)
-    
-    def add_log(self, message: str, level: str = "INFO"):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        colors = {
-            "DEBUG": "#6b7280",
-            "INFO": "#e0e0e0",
-            "WARNING": "#fbbf24",
-            "ERROR": "#ef4444",
-            "CRITICAL": "#dc2626"
-        }
-        color = colors.get(level, "#e0e0e0")
-        
-        html = f'<span style="color: #6b7280;">[{timestamp}]</span> <span style="color: {color}; font-weight: 600;">[{level}]</span> <span style="color: {color};">{message}</span>'
-        self._log_lines.append(html)
-        
-        if len(self._log_lines) > self._max_lines:
-            self._log_lines = self._log_lines[-self._max_lines:]
-        
-        self._log_text.setHtml("<br>".join(self._log_lines))
-        self._log_text.verticalScrollBar().setValue(
-            self._log_text.verticalScrollBar().maximum()
-        )
-    
-    def _clear_log(self):
-        self._log_lines.clear()
-        self._log_text.clear()
-
-
-class MainWindow(QMainWindow):
-    """主窗口"""
-    
-    def __init__(self):
-        super().__init__()
-        self._backend = get_backend_manager()
-        self._setup_ui()
-        self._setup_menu()
-        self._setup_status_bar()
-        logger.info("Main window initialized")
-    
-    def _setup_ui(self):
-        self.setWindowTitle(t("app_title"))
-        self.setMinimumSize(1400, 900)
-        self.resize(1600, 1000)
-        
-        # 应用主题
-        self.setStyleSheet(MODERN_DARK_THEME)
-        
-        # 中心部件
-        central = QWidget()
-        self.setCentralWidget(central)
-        
-        # 主布局
-        main_layout = QHBoxLayout(central)
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(12)
-        
-        # ===== 左侧面板 =====
-        left_panel = QWidget()
-        left_panel.setMaximumWidth(420)
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(12)
-        
-        # Logo
-        logo_label = QLabel(t("app_name"))
-        logo_label.setObjectName("titleLabel")
-        logo_label.setAlignment(Qt.AlignCenter)
-        left_layout.addWidget(logo_label)
-        
-        # GPU状态
-        self._gpu_status = GPUStatusCard()
-        left_layout.addWidget(self._gpu_status)
-        
-        # 模型选择
-        self._model_panel = ModelPanel()
-        left_layout.addWidget(self._model_panel)
-        
-        # 滚动区域
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-        
-        scroll_content = QWidget()
-        scroll_content.setStyleSheet("background: transparent;")
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
-        scroll_layout.setSpacing(12)
-        
-        # Prompt
-        self._prompt_panel = PromptPanel()
-        scroll_layout.addWidget(self._prompt_panel)
-        
-        # 参数
-        self._params_panel = ParametersPanel()
-        scroll_layout.addWidget(self._params_panel)
-        
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        left_layout.addWidget(scroll)
-        
-        # 生成按钮
-        self._generate_btn = QPushButton(t("generate_video"))
-        self._generate_btn.setObjectName("generateBtn")
-        self._generate_btn.clicked.connect(self._generate)
-        left_layout.addWidget(self._generate_btn)
-        
-        self._stop_btn = QPushButton(t("stop_generation"))
-        self._stop_btn.setObjectName("stopBtn")
-        self._stop_btn.setEnabled(False)
-        self._stop_btn.clicked.connect(self._stop_generation)
-        left_layout.addWidget(self._stop_btn)
-        
-        self._output_btn = QPushButton(t("open_output"))
-        self._output_btn.setObjectName("secondaryBtn")
-        self._output_btn.clicked.connect(self._open_output_dir)
-        left_layout.addWidget(self._output_btn)
-        
-        main_layout.addWidget(left_panel)
-        
-        # ===== 右侧面板 =====
-        right_panel = QWidget()
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(12)
-        
-        # 标签页
-        self._tab_widget = QTabWidget()
-        
-        # 任务列表
-        self._task_panel = TaskListPanel()
-        self._tab_widget.addTab(self._task_panel, t("task_queue"))
-        
-        # 日志
-        self._log_panel = LogPanel()
-        self._tab_widget.addTab(self._log_panel, t("log_output"))
-        
-        # 历史
-        self._history_widget = self._create_history_panel()
-        self._tab_widget.addTab(self._history_widget, t("history"))
-        
-        right_layout.addWidget(self._tab_widget)
-        
-        # 进度区域
-        progress_frame = StyledCard()
-        progress_layout = QVBoxLayout(progress_frame)
-        
-        self._progress_bar = QProgressBar()
-        self._progress_bar.setMaximumHeight(20)
-        self._progress_bar.setTextVisible(True)
-        self._progress_bar.setVisible(False)
-        progress_layout.addWidget(self._progress_bar)
-        
-        self._progress_label = QLabel("")
-        self._progress_label.setAlignment(Qt.AlignCenter)
-        self._progress_label.setVisible(False)
-        progress_layout.addWidget(self._progress_label)
-        
-        right_layout.addWidget(progress_frame)
-        
-        main_layout.addWidget(right_panel)
-    
-    def _create_history_panel(self) -> QWidget:
-        panel = StyledCard()
-        layout = QVBoxLayout(panel)
-        
-        self._history_list = QListWidget()
-        layout.addWidget(self._history_list)
-        
-        btn_layout = QHBoxLayout()
-        
-        refresh_btn = QPushButton(t("refresh_history"))
-        refresh_btn.setObjectName("secondaryBtn")
-        refresh_btn.clicked.connect(self._load_history)
-        btn_layout.addWidget(refresh_btn)
-        
-        clear_btn = QPushButton(t("clear_history"))
-        clear_btn.setObjectName("secondaryBtn")
-        clear_btn.clicked.connect(self._clear_history)
-        btn_layout.addWidget(clear_btn)
-        
-        layout.addLayout(btn_layout)
-        
-        self._load_history()
-        return panel
-    
-    def _setup_menu(self):
-        menubar = self.menuBar()
-        
-        # 文件
-        file_menu = menubar.addMenu(t("file"))
-        file_menu.addAction(t("open_output"), self._open_output_dir)
-        file_menu.addSeparator()
-        file_menu.addAction(t("exit"), self.close)
-        
-        # 模型
-        model_menu = menubar.addMenu(t("model"))
-        model_menu.addAction(t("load_model"), self._model_panel._load_model)
-        model_menu.addAction(t("unload_model"), self._model_panel._unload_model)
-        model_menu.addSeparator()
-        model_menu.addAction(t("download_model"), self._model_panel._download_model)
-        
-        # 工具
-        tools_menu = menubar.addMenu(t("tools"))
-        tools_menu.addAction(t("clear_cache"), self._clear_cache)
-        
-        # 语言菜单
-        lang_menu = menubar.addMenu(t("language"))
-        
-        zh_action = QAction("中文", self)
-        zh_action.triggered.connect(lambda: self._change_language("zh_CN"))
-        lang_menu.addAction(zh_action)
-        
-        en_action = QAction("English", self)
-        en_action.triggered.connect(lambda: self._change_language("en_US"))
-        lang_menu.addAction(en_action)
-        
-        # 帮助
-        help_menu = menubar.addMenu(t("help"))
-        help_menu.addAction(t("about"), self._show_about)
-    
-    def _setup_status_bar(self):
-        self._status_bar = QStatusBar()
-        self.setStatusBar(self._status_bar)
-        self._status_bar.showMessage(t("ready"))
-    
-    def _change_language(self, lang: str):
-        """切换语言"""
-        I18n.set_language(lang)
-        
-        # 保存设置
-        try:
-            import json
-            config_path = Path("./configs/config.json")
-            config = {}
-            if config_path.exists():
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-            
-            if "app" not in config:
-                config["app"] = {}
-            config["app"]["language"] = lang
-            
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=4, ensure_ascii=False)
-        except Exception as e:
-            logger.error(f"Failed to save language setting: {e}")
-        
-        # 提示重启
-        QMessageBox.information(
-            self, t("info"),
-            "语言设置已保存，重启后生效。\nLanguage saved, restart to apply."
-        )
-    
-    def _generate(self):
-        prompt = self._prompt_panel.get_prompt()
-        if not prompt:
-            QMessageBox.warning(self, t("warning"), t("prompt_placeholder"))
-            return
-        
-        negative_prompt = self._prompt_panel.get_negative_prompt()
-        params = self._params_panel.get_params()
-        model_id = self._model_panel.get_selected_model()
+        model_id = self._model_combo.currentData()
         
         self._generate_btn.setEnabled(False)
         self._stop_btn.setEnabled(True)
-        self._progress_bar.setVisible(True)
-        self._progress_label.setVisible(True)
+        self._progress_frame.setVisible(True)
         self._progress_bar.setValue(0)
         self._progress_label.setText(t("generating"))
-        self._progress_label.setStyleSheet("color: #7c8aff; font-weight: 600;")
         
         try:
             task_id = self._backend.submit_task(
@@ -1214,7 +932,7 @@ class MainWindow(QMainWindow):
             )
             
             self._status_bar.showMessage(t("task_submitted", id=task_id))
-            self._log_panel.add_log(t("task_submitted", id=task_id), "INFO")
+            self._add_log(t("task_submitted", id=task_id), "INFO")
             
             self._current_task_id = task_id
             self._progress_timer = QTimer()
@@ -1228,7 +946,7 @@ class MainWindow(QMainWindow):
     def _stop_generation(self):
         if hasattr(self, '_current_task_id'):
             self._backend.cancel_task(self._current_task_id)
-            self._log_panel.add_log(t("task_cancelled", id=self._current_task_id), "WARNING")
+            self._add_log(t("task_cancelled", id=self._current_task_id), "WARNING")
         self._reset_generation_ui()
     
     def _update_progress(self):
@@ -1246,25 +964,56 @@ class MainWindow(QMainWindow):
                 
                 if status['status'] == 'completed':
                     self._progress_label.setText(t("generation_complete"))
-                    self._progress_label.setStyleSheet("color: #10b981; font-weight: 600;")
-                    self._log_panel.add_log(t("task_completed", id=self._current_task_id), "INFO")
+                    self._progress_label.setStyleSheet("color: #00ff00; font-size: 11px;")
+                    self._add_log(t("task_completed", id=self._current_task_id), "INFO")
                 elif status['status'] == 'failed':
                     self._progress_label.setText(t("generation_failed", error=status.get('error_message', '')))
-                    self._progress_label.setStyleSheet("color: #ef4444; font-weight: 600;")
-                    self._log_panel.add_log(t("task_failed", error=status.get('error_message', '')), "ERROR")
+                    self._progress_label.setStyleSheet("color: #ff4444; font-size: 11px;")
+                    self._add_log(t("task_failed", error=status.get('error_message', '')), "ERROR")
                 
                 QTimer.singleShot(3000, self._reset_generation_ui)
     
     def _reset_generation_ui(self):
         self._generate_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
-        self._progress_bar.setVisible(False)
-        self._progress_label.setVisible(False)
+        self._progress_frame.setVisible(False)
     
-    def _open_output_dir(self):
-        output_dir = Path("./outputs")
-        output_dir.mkdir(exist_ok=True)
-        os.startfile(str(output_dir))
+    def _update_tasks(self):
+        try:
+            queue = self._backend.get_task_queue()
+            status = queue.get_queue_status()
+            
+            self._task_status_label.setText(
+                t("queue_status", pending=status['pending'], running=status['running'], completed=status['completed'])
+            )
+            
+            tasks = queue.get_all_tasks()
+            if self._task_list.count() != len(tasks):
+                self._task_list.clear()
+                for task in tasks:
+                    status_text = {
+                        TaskStatus.PENDING: t("pending"),
+                        TaskStatus.RUNNING: t("running"),
+                        TaskStatus.COMPLETED: t("completed"),
+                        TaskStatus.FAILED: t("failed"),
+                        TaskStatus.CANCELLED: t("cancelled")
+                    }
+                    icon = status_text.get(task.status, "???")
+                    progress = f" [{task.progress:.0f}%]" if task.status == TaskStatus.RUNNING else ""
+                    self._task_list.addItem(f"[{icon}] {task.task_id}: {task.prompt[:30]}...{progress}")
+        except:
+            pass
+    
+    def _clear_tasks(self):
+        self._backend.get_task_queue().clear_completed()
+    
+    def _add_log(self, message: str, level: str = "INFO"):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        colors = {"DEBUG": "#666666", "INFO": "#ffffff", "WARNING": "#ffaa00", "ERROR": "#ff4444"}
+        color = colors.get(level, "#ffffff")
+        
+        html = f'<span style="color: #444444;">[{timestamp}]</span> <span style="color: {color};">[{level}] {message}</span>'
+        self._log_text.append(html)
     
     def _load_history(self):
         try:
@@ -1272,32 +1021,50 @@ class MainWindow(QMainWindow):
             self._history_list.clear()
             for record in history:
                 self._history_list.addItem(
-                    f"[{record['created_at'][:16]}] {record['model_id']}: {record['prompt'][:35]}..."
+                    f"[{record['created_at'][:16]}] {record['model_id']}: {record['prompt'][:40]}..."
                 )
-        except Exception as e:
-            logger.error(f"Failed to load history: {e}")
+        except:
+            pass
     
     def _clear_history(self):
-        reply = QMessageBox.question(
-            self, t("confirm"), t("confirm_clear_history"),
-            QMessageBox.Yes | QMessageBox.No
-        )
+        reply = QMessageBox.question(self, t("confirm"), t("confirm_clear_history"), QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             self._backend.get_history_manager().clear_history()
             self._history_list.clear()
+    
+    def _open_output_dir(self):
+        output_dir = Path("./outputs")
+        output_dir.mkdir(exist_ok=True)
+        os.startfile(str(output_dir))
     
     def _clear_cache(self):
         self._backend.clear_cache()
         self._status_bar.showMessage(t("cache_cleared"))
     
+    def _change_language(self, lang: str):
+        I18n.set_language(lang)
+        try:
+            import json
+            config_path = Path("./configs/config.json")
+            config = {}
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            if "app" not in config:
+                config["app"] = {}
+            config["app"]["language"] = lang
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+        except:
+            pass
+        
+        QMessageBox.information(self, t("info"), "语言设置已保存，重启后生效。\nLanguage saved, restart to apply.")
+    
     def _show_about(self):
         QMessageBox.about(self, t("about_title"), t("about_text"))
     
     def closeEvent(self, event):
-        reply = QMessageBox.question(
-            self, t("confirm"), t("confirm_exit"),
-            QMessageBox.Yes | QMessageBox.No
-        )
+        reply = QMessageBox.question(self, t("confirm"), t("confirm_exit"), QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             self._backend.shutdown()
             event.accept()
